@@ -4,6 +4,7 @@
 ///     Copyright (c) 2005,2009 by Lutz Sammer.  All Rights Reserved.       
 ///                                                                         
 ///     Contributor(s):                                                     
+///     	Bitmap and design based on wmbp6.
 ///                                                                         
 ///     This file is part of wmc2d                                          
 ///                                                                         
@@ -298,11 +299,11 @@ void DrawFrequency(void)
 
     n = ReadNumber("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq");
     sprintf(buf, "%4d", n / 1000);
-    DrawString(buf, 3, 47);
+    DrawString(buf, 3, 48);
 
     n = ReadNumber("/sys/devices/system/cpu/cpu1/cpufreq/scaling_cur_freq");
     sprintf(buf, "%4d", n / 1000);
-    DrawString(buf, 30, 47);
+    DrawString(buf, 31, 48);
     // Draw Mhz
     //DASPCopyArea(Image, Background, 89, Backlight, 15, 7, 30, 47);
 }

@@ -408,6 +408,7 @@ int Init(int argc, const char *argv[])
     int i;
     int n;
     char *s;
+    int shared;
 
     display_name = getenv("DISPLAY");
 
@@ -429,10 +430,11 @@ int Init(int argc, const char *argv[])
     }
     // printf("video: shmem extension version %i.%i\n",
     //	    shm_query_ver->major_version, shm_query_ver->minor_version);
+    format = shm_query_ver->pixmap_format;
     if (shm_query_ver->shared_pixmaps) {
-	format = shm_query_ver->pixmap_format;
+	shared = 1;
     } else {
-	format = 0;
+	shared = 0;
     }
     free(shm_query_ver);
 
@@ -466,6 +468,8 @@ int Init(int argc, const char *argv[])
 	image->bitmap_format_scanline_pad, width, image->bits_per_pixel);
      */
 
+    pixmap = xcb_generate_id(connection);
+    if (shared) {
     image =
 	xcb_image_create_native(connection, 64, 64, format, screen->root_depth,
 	NULL, ~0, NULL);
@@ -493,11 +497,14 @@ int Init(int argc, const char *argv[])
     // printf("%p\n", ShmInfo.shmaddr);
     memset(ShmInfo.shmaddr, 0x8F, image->height * image->stride);
 
-    pixmap = xcb_generate_id(connection);
     xcb_shm_create_pixmap(connection, pixmap, screen->root, 64, 64,
 	screen->root_depth, ShmInfo.shmseg, 0);
 
     xcb_image_destroy(image);
+    } else {
+	xcb_create_pixmap(connection, screen->root_depth, pixmap,
+	screen->root, 64, 64);
+    }
 
     //	Create the window
     window = xcb_generate_id(connection);
@@ -879,7 +886,7 @@ int main(int argc, const char *argv[])
 {
     if (argc>1) {
 	printf(
-	"wmc2d core2duo dockapp Version 2.00 (GIT-" GIT_REV
+	"wmc2d core2duo dockapp Version 2.01 (GIT-" GIT_REV
 	"), (c) 2004,2009 by Lutz Sammer\n"
 	"\tLicense AGPLv3: GNU Affero General Public License version 3\n"
 	"Usage: wmc2d\n");

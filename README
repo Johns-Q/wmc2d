@@ -23,13 +23,13 @@ This is a small dockapp, which shows the core 2 duo temperature and
 the temperature of ACPI thermal zone 0, which is normaly the motherboard
 temperature.
 
-To compile you must have libdockapp installed.
+To compile you must have libxcb (xcb-dev) installed.
 
 Just make make and play.
 
 Requires:
-	x11-libs/libdockapp
-		Window Maker Dock Applet Library
-		http://solfertje.student.utwente.nl/~dalroi/libdockapp/
+	x11-libs/libxcb
+		X C-language Bindings library
+		http://xcb.freedesktop.org/
 
 Lutz Sammer johns98@gmx.net

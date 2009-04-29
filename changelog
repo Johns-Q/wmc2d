@@ -1,4 +1,8 @@
 User johns
+Wed Apr 29 22:45:41 CEST 2009
+
+    Rewritten, using xcb only.
+
 Date Sat Apr 25 17:33:49 CEST 2009
 
     Initial version.

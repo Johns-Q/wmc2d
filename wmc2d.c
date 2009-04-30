@@ -55,7 +55,12 @@ xcb_gcontext_t ForegroundGC;		///< foreground graphic context
 xcb_gcontext_t NormalGC;		///< normal graphic context
 xcb_pixmap_t Pixmap;			///< our background pixmap
 
+/**
+**	Icon window is used in dockapps like wmDockApp (wmgeneral.c)
+**	But it works without it.
+*/
 //xcb_window_t IconWindow;		///< our icon window
+
 xcb_shm_segment_info_t ShmInfo;		///< shared memory info of our pixmap
 
 xcb_pixmap_t Image;			///< drawing data
@@ -419,25 +424,27 @@ int Init(int argc, const char *argv[])
 	fprintf(stderr, "Can't connect to X11 server on %s\n", display_name);
 	return -1;
     }
-    //
-    //	Check needed externsions.
-    //
-    if (!(shm_query_ver =
-	    xcb_shm_query_version_reply(connection,
-		xcb_shm_query_version(connection), NULL))) {
-	fprintf(stderr, "video: No shmem extension on %s\n", display_name);
-	return -1;
-    }
-    // printf("video: shmem extension version %i.%i\n",
-    //	    shm_query_ver->major_version, shm_query_ver->minor_version);
-    format = shm_query_ver->pixmap_format;
-    if (shm_query_ver->shared_pixmaps) {
-	shared = 1;
-    } else {
-	shared = 0;
-    }
-    free(shm_query_ver);
 
+    if (0) {
+	//
+	//  Check needed externsions.
+	//
+	if (!(shm_query_ver =
+		xcb_shm_query_version_reply(connection,
+		    xcb_shm_query_version(connection), NULL))) {
+	    fprintf(stderr, "video: No shmem extension on %s\n", display_name);
+	    return -1;
+	}
+	// printf("video: shmem extension version %i.%i\n",
+	//	shm_query_ver->major_version, shm_query_ver->minor_version);
+	format = shm_query_ver->pixmap_format;
+	if (shm_query_ver->shared_pixmaps) {
+	    shared = 1;
+	} else {
+	    shared = 0;
+	}
+	free(shm_query_ver);
+    }
     //	Get the first screen
     setup = xcb_get_setup(connection);
     iter = xcb_setup_roots_iterator(setup);
@@ -462,48 +469,49 @@ int Init(int argc, const char *argv[])
     //		format from above, little overhead
     //		can use format_iter to find bytes for shared memory.
     /*
-	setup->bitmap_format_scanline_pad;
-	xcb_bytes_per_line  =  ((bpp * width + pad - 1) & -pad) >> 3;
-	image->bytes_per_line = xcb_bytes_per_line(
-	image->bitmap_format_scanline_pad, width, image->bits_per_pixel);
+       setup->bitmap_format_scanline_pad;
+       xcb_bytes_per_line  =  ((bpp * width + pad - 1) & -pad) >> 3;
+       image->bytes_per_line = xcb_bytes_per_line(
+       image->bitmap_format_scanline_pad, width, image->bits_per_pixel);
      */
 
     pixmap = xcb_generate_id(connection);
-    if (shared) {
-    image =
-	xcb_image_create_native(connection, 64, 64, format, screen->root_depth,
-	NULL, ~0, NULL);
-    if (!image) {
-	fprintf(stderr, "can't create image\n");
-	return -1;
-    }
-    // printf("%d x %d\n", image->height, image->stride);
+    if (0 && shared) {
+	image =
+	    xcb_image_create_native(connection, 64, 64, format,
+	    screen->root_depth, NULL, ~0, NULL);
+	if (!image) {
+	    fprintf(stderr, "can't create image\n");
+	    return -1;
+	}
+	// printf("%d x %d\n", image->height, image->stride);
 
-    ShmInfo.shmid =
-	shmget(IPC_PRIVATE, image->height * image->stride, IPC_CREAT | 0777);
-    if (ShmInfo.shmid == -1U) {
-	fprintf(stderr, "error shmget()\n");
-	return -1;
-    }
-    ShmInfo.shmaddr = shmat(ShmInfo.shmid, 0, 0);
-    if (!ShmInfo.shmaddr) {
-	fprintf(stderr, "error shmat()\n");
-	return -1;
-    }
-    ShmInfo.shmseg = xcb_generate_id(connection);
-    xcb_shm_attach(connection, ShmInfo.shmseg, ShmInfo.shmid, 0);
-    shmctl(ShmInfo.shmid, IPC_RMID, 0);
+	ShmInfo.shmid =
+	    shmget(IPC_PRIVATE, image->height * image->stride,
+	    IPC_CREAT | 0777);
+	if (ShmInfo.shmid == -1U) {
+	    fprintf(stderr, "error shmget()\n");
+	    return -1;
+	}
+	ShmInfo.shmaddr = shmat(ShmInfo.shmid, 0, 0);
+	if (!ShmInfo.shmaddr) {
+	    fprintf(stderr, "error shmat()\n");
+	    return -1;
+	}
+	ShmInfo.shmseg = xcb_generate_id(connection);
+	xcb_shm_attach(connection, ShmInfo.shmseg, ShmInfo.shmid, 0);
+	shmctl(ShmInfo.shmid, IPC_RMID, 0);
 
-    // printf("%p\n", ShmInfo.shmaddr);
-    memset(ShmInfo.shmaddr, 0x8F, image->height * image->stride);
+	// printf("%p\n", ShmInfo.shmaddr);
+	memset(ShmInfo.shmaddr, 0x8F, image->height * image->stride);
 
-    xcb_shm_create_pixmap(connection, pixmap, screen->root, 64, 64,
-	screen->root_depth, ShmInfo.shmseg, 0);
+	xcb_shm_create_pixmap(connection, pixmap, screen->root, 64, 64,
+	    screen->root_depth, ShmInfo.shmseg, 0);
 
-    xcb_image_destroy(image);
+	xcb_image_destroy(image);
     } else {
-	xcb_create_pixmap(connection, screen->root_depth, pixmap,
-	screen->root, 64, 64);
+	xcb_create_pixmap(connection, screen->root_depth, pixmap, screen->root,
+	    64, 64);
     }
 
     //	Create the window
@@ -532,16 +540,16 @@ int Init(int argc, const char *argv[])
     values[1] = XCB_EVENT_MASK_EXPOSURE;
     // create icon win
     /*
-	xcb_create_window(connection,	// Connection
-	XCB_COPY_FROM_PARENT,		// depth (same as root)
-	IconWindow,			// window Id
-	window,				// parent window
-	0, 0,				// x, y
-	64, 64,				// width, height
-	0,				// border_width
-	XCB_WINDOW_CLASS_INPUT_OUTPUT,	// class
-	screen->root_visual,		// visual
-	mask, values);			// mask, values
+       xcb_create_window(connection,	// Connection
+       XCB_COPY_FROM_PARENT,		// depth (same as root)
+       IconWindow,			// window Id
+       window,				// parent window
+       0, 0,				// x, y
+       64, 64,				// width, height
+       0,				// border_width
+       XCB_WINDOW_CLASS_INPUT_OUTPUT,	// class
+       screen->root_visual,		// visual
+       mask, values);			// mask, values
      */
 
     // XSetWMNormalHints
@@ -625,11 +633,13 @@ void Exit(void)
 
     // FIXME: Free of shared pixmap correct?
     xcb_free_pixmap(Connection, Pixmap);
-    xcb_shm_detach(Connection, ShmInfo.shmseg);
-    shmdt(ShmInfo.shmaddr);
+    if (0) {
+	xcb_shm_detach(Connection, ShmInfo.shmseg);
+	shmdt(ShmInfo.shmaddr);
+    }
 
     if (Image) {
-	xcb_free_pixmap(Connection, Pixmap);
+	xcb_free_pixmap(Connection, Image);
     }
 
     xcb_disconnect(Connection);
@@ -884,12 +894,11 @@ void PrepareData(void)
 */
 int main(int argc, const char *argv[])
 {
-    if (argc>1) {
-	printf(
-	"wmc2d core2duo dockapp Version 2.01 (GIT-" GIT_REV
-	"), (c) 2004,2009 by Lutz Sammer\n"
-	"\tLicense AGPLv3: GNU Affero General Public License version 3\n"
-	"Usage: wmc2d\n");
+    if (argc > 1) {
+	printf("wmc2d core2duo dockapp Version 2.01 (GIT-" GIT_REV
+	    "), (c) 2004,2009 by Lutz Sammer\n"
+	    "\tLicense AGPLv3: GNU Affero General Public License version 3\n"
+	    "Usage: wmc2d\n");
 	return 0;
     }
     Init(argc, argv);

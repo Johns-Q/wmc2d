@@ -1,4 +1,8 @@
 User johns
+Thu Apr 30 09:58:43 CEST 2009
+
+    Removed shared pixmap.
+
 Wed Apr 29 22:45:41 CEST 2009
 
     Rewritten, using xcb only.

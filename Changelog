@@ -1,9 +1,13 @@
 User johns
-Thu Apr 30 09:58:43 CEST 2009
+Date Wed May 12 13:45:26 CEST 2010
+
+    Renamed info files and Makefile cleanup.
+
+Date Thu Apr 30 09:58:43 CEST 2009
 
     Removed shared pixmap.
 
-Wed Apr 29 22:45:41 CEST 2009
+Date Wed Apr 29 22:45:41 CEST 2009
 
     Rewritten, using xcb only.
 

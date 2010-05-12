@@ -351,13 +351,15 @@ void Loop(void)
 		    switch (event->
 			response_type & XCB_EVENT_RESPONSE_TYPE_MASK) {
 			case XCB_EXPOSE:
-			    // FIXME: collapse multi expose
 			    // printf("Expose\n");
-			    xcb_clear_area(Connection, 0, Window, 0, 0, 64,
+			    // collapse multi expose
+			    if (!((xcb_expose_event_t*)event)->count) {
+				xcb_clear_area(Connection, 0, Window, 0, 0, 64,
 				64);
-			    //xcb_clear_area(Connection, 0, IconWindow, 0, 0, 64, 64);
-			    // flush the request
-			    xcb_flush(Connection);
+				//xcb_clear_area(Connection, 0, IconWindow, 0, 0, 64, 64);
+				// flush the request
+				xcb_flush(Connection);
+			    }
 			    break;
 			case XCB_DESTROY_NOTIFY:
 			    // printf("destroy\n");
@@ -460,8 +462,8 @@ int Init(int argc, const char *argv[])
     //	Create normal graphic context
     normal = xcb_generate_id(connection);
     mask = XCB_GC_FOREGROUND | XCB_GC_BACKGROUND | XCB_GC_GRAPHICS_EXPOSURES;
-    values[0] = screen->black_pixel;
-    values[1] = screen->white_pixel;
+    values[0] = screen->white_pixel;
+    values[1] = screen->black_pixel;
     values[2] = 0;
     xcb_create_gc(connection, normal, screen->root, mask, values);
 
@@ -554,8 +556,10 @@ int Init(int argc, const char *argv[])
 
     // XSetWMNormalHints
     size_hints.flags = 0;		// FIXME: bad lib design
-    xcb_size_hints_set_position(&size_hints, 1, 0, 0);
-    xcb_size_hints_set_size(&size_hints, 1, 64, 64);
+    // xcb_size_hints_set_position(&size_hints, 0, 0, 0);
+    // xcb_size_hints_set_size(&size_hints, 0, 64, 64);
+    xcb_size_hints_set_min_size(&size_hints, 64, 64);
+    xcb_size_hints_set_max_size(&size_hints, 64, 64);
     xcb_set_wm_normal_hints(connection, window, &size_hints);
 
     // XSetClassHint from xc/lib/X11/SetHints.c
@@ -895,8 +899,11 @@ void PrepareData(void)
 int main(int argc, const char *argv[])
 {
     if (argc > 1) {
-	printf("wmc2d core2duo dockapp Version 2.01 (GIT-" GIT_REV
-	    "), (c) 2004,2009 by Lutz Sammer\n"
+	printf("wmc2d core2duo dockapp Version 2.02"
+#ifdef GIT_REV
+	    "(GIT-" GIT_REV ")"
+#endif
+	    ", (c) 2004,2009 by Lutz Sammer\n"
 	    "\tLicense AGPLv3: GNU Affero General Public License version 3\n"
 	    "Usage: wmc2d\n");
 	return 0;

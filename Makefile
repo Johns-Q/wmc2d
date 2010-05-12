@@ -20,21 +20,22 @@
 #	$Id$
 #----------------------------------------------------------------------------
 
-GIT_REV =       "`git describe --always 2>/dev/null`"
+VERSION =	"2.02"
+GIT_REV =	$(shell git describe --always 2>/dev/null)
 
 CC=	gcc
 OPTIM=	-march=native -O2 -fomit-frame-pointer
 CFLAGS= $(OPTIM) -W -Wall -g -pipe \
-	-DGIT_REV=\"$(GIT_REV)\"
+	-DVERSION='$(VERSION)'  $(if $(GIT_REV), -DGIT_REV='"$(GIT_REV)"')
 LIBS=	`pkg-config --libs xcb-icccm xcb-shape xcb-shm xcb-image xcb`
 
 OBJS=	wmc2d.o
-FILES=	Makefile README changelog agpl-3.0.txt wmc2d.xpm
+FILES=	Makefile README Changelog AGPL-3.0.txt wmc2d.xpm
 
 wmc2d:	$(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-wmc2d.o:	wmc2d.xpm
+wmc2d.o:	wmc2d.xpm Makefile
 
 #----------------------------------------------------------------------------
 #	Developer tools
@@ -55,4 +56,5 @@ dist:
 		$(addprefix wmc2d/, $(FILES) $(OBJS:.o=.c))
 
 install:
+	strip --strip-unneeded -R .comment wmc2d
 	install -s wmc2d /usr/local/bin/

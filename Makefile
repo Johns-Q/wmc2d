@@ -26,7 +26,7 @@ CC=	gcc
 OPTIM=	-march=native -O2 -fomit-frame-pointer
 CFLAGS= $(OPTIM) -W -Wall -g -pipe \
 	-DGIT_REV=\"$(GIT_REV)\"
-LIBS=	`pkg-config --libs xcb-icccm xcb-shape xcb-image xcb`
+LIBS=	`pkg-config --libs xcb-icccm xcb-shape xcb-shm xcb-image xcb`
 
 OBJS=	wmc2d.o
 FILES=	Makefile README changelog agpl-3.0.txt wmc2d.xpm

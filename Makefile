@@ -58,7 +58,7 @@ clean:
 	-rm *.o *~
 
 clobber:	clean
-	-rm wmc2d
+	-rm -rf wmc2d www/html
 
 dist:
 	tar cjCf .. wmc2d-`date +%F-%H`.tar.bz2 \

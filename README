@@ -1,7 +1,6 @@
+@file README		@brief	Core 2 Duo temperature dockapp.
 
-@file README		Core 2 Duo temperature dockapp.
-
-Copyright (c) 2004,2009 by Lutz Sammer.  All Rights Reserved.
+Copyright (c) 2004, 2009, 2010 by Lutz Sammer.  All Rights Reserved.
 
 Contributor(s):
 
@@ -25,7 +24,11 @@ temperature.
 
 To compile you must have libxcb (xcb-dev) installed.
 
+You can enable/disable screen-saver support see wmc2d.c beginning of the file.
+
 Just make make and play.
+
+Use wmc2d -h to see the command line options.
 
 Requires:
 	x11-libs/libxcb

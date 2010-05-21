@@ -1,7 +1,7 @@
 #
-#	@file Makefile		Core 2 Duo temperature dockapp.
+#	@file Makefile	@brief Core 2 Duo temperature dockapp make file.
 #
-#	Copyright (c) 2004,2009 by Lutz Sammer.  All Rights Reserved.
+#	Copyright (c) 2004, 2009, 2010 by Lutz Sammer.  All Rights Reserved.
 #
 #	Contributor(s):
 #
@@ -20,17 +20,21 @@
 #	$Id$
 #----------------------------------------------------------------------------
 
-VERSION =	"2.02"
+VERSION =	"2.03"
 GIT_REV =	$(shell git describe --always 2>/dev/null)
 
 CC=	gcc
 OPTIM=	-march=native -O2 -fomit-frame-pointer
-CFLAGS= $(OPTIM) -W -Wall -g -pipe \
+CFLAGS= $(OPTIM) -W -Wall -W -g -pipe \
 	-DVERSION='$(VERSION)'  $(if $(GIT_REV), -DGIT_REV='"$(GIT_REV)"')
-LIBS=	`pkg-config --libs xcb-icccm xcb-shape xcb-shm xcb-image xcb`
+#STATIC= --static
+LIBS=	$(STATIC) `pkg-config --libs $(STATIC) \
+	xcb-screensaver xcb-icccm xcb-shape xcb-shm xcb-image xcb` -lpthread
 
 OBJS=	wmc2d.o
-FILES=	Makefile README Changelog AGPL-3.0.txt wmc2d.xpm
+FILES=	Makefile README Changelog AGPL-3.0.txt wmc2d.doxyfile wmc2d.xpm
+
+all:	wmc2d
 
 wmc2d:	$(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -39,6 +43,11 @@ wmc2d.o:	wmc2d.xpm Makefile
 
 #----------------------------------------------------------------------------
 #	Developer tools
+
+doc:	$(SRCS) $(HDRS) wmc2d.doxyfile
+	(cat wmc2d.doxyfile; \
+	echo 'PROJECT_NUMBER=${VERSION} $(if $(GIT_REV), (GIT-$(GIT_REV)))') \
+	| doxygen -
 
 indent:
 	for i in $(OBJS:.o=.c) $(HDRS); do \
@@ -58,3 +67,6 @@ dist:
 install:
 	strip --strip-unneeded -R .comment wmc2d
 	install -s wmc2d /usr/local/bin/
+
+help:
+	@echo "make all|doc|indent|clean|clobber|dist|install|help"

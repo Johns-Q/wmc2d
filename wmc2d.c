@@ -1,7 +1,7 @@
 ///
-///	@name wmc2d.c	-	Dockapp for core 2 duo temperature
+///	@file wmc2d.c		@brief	Dockapp for core 2 duo temperature
 ///
-///	Copyright (c) 2004, 2009 by Lutz Sammer.  All Rights Reserved.
+///	Copyright (c) 2004, 2009, 2010 by Lutz Sammer.  All Rights Reserved.
 ///
 ///	Contributor(s):
 ///		Bitmap and design based on wmbp6.
@@ -21,6 +21,28 @@
 ///	GNU Affero General Public License for more details.
 ///
 ///	$Id$
+////////////////////////////////////////////////////////////////////////////
+
+/**
+**	@mainpage
+**
+**	This is a small dockapp, which shows the core 2 duo temperature and
+**	the temperature of ACPI thermal zone 0, which is normaly the
+**	motherboard temperature.
+**
+**	@n
+**	To compile you must have libxcb (xcb-dev) installed.
+**
+**	@n
+**	The source is a single file with less than 1000 lines. The sources
+**	are (hopefully) good documented.  They can be used as an example,
+**	how to write your own dockapp, applet or widget.
+*/
+
+////////////////////////////////////////////////////////////////////////////
+
+#define SCREENSAVER			///< config support screensaver
+
 ////////////////////////////////////////////////////////////////////////////
 
 #include <stdio.h>
@@ -43,6 +65,9 @@
 #include <xcb/xcb_atom.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xcb_pixel.h>
+#ifdef SCREENSAVER
+#include <xcb/screensaver.h>
+#endif
 
 #include "wmc2d.xpm"
 
@@ -51,19 +76,18 @@
 xcb_connection_t *Connection;		///< connection to X11 server
 xcb_screen_t *Screen;			///< our screen
 xcb_window_t Window;			///< our window
-xcb_gcontext_t ForegroundGC;		///< foreground graphic context
 xcb_gcontext_t NormalGC;		///< normal graphic context
 xcb_pixmap_t Pixmap;			///< our background pixmap
 
-/**
-**	Icon window is used in dockapps like wmDockApp (wmgeneral.c)
-**	But it works without it.
-*/
-//xcb_window_t IconWindow;		///< our icon window
-
-xcb_shm_segment_info_t ShmInfo;		///< shared memory info of our pixmap
-
 xcb_pixmap_t Image;			///< drawing data
+
+#ifdef SCREENSAVER
+int ScreenSaverEventId;			///< screen saver event ids
+#endif
+
+static int Rate;			///< update rate in ms
+static char WindowMode;			///< start in window mode
+static char UseSleep;			///< use sleep while screensaver runs
 
 extern void Timeout(void);		///< called from event loop
 
@@ -79,7 +103,7 @@ extern void Timeout(void);		///< called from event loop
 **	@param depth		image depth
 **	@param transparent	pixel for transparent color
 **	@param data		XPM graphic data
-**	@param[OUT] mask	bitmap mask for transparent
+**	@param[out] mask	bitmap mask for transparent
 **
 **	@returns image create from the XPM data.
 **
@@ -131,8 +155,6 @@ xcb_image_t *XcbXpm2Image(xcb_connection_t * connection,
     }
     data++;
 
-    // printf("%dx%d #%d*%d\n", w, h, colors, bytes_per_color);
-
     //
     //	Read color table, send alloc color requests
     //
@@ -179,7 +201,6 @@ xcb_image_t *XcbXpm2Image(xcb_connection_t * connection,
 		b = (hex[line[0] & 0xFF] << 4) | hex[line[1] & 0xFF];
 		line += 2;
 	    }
-	    // printf("Color %d %c %d %d %d\n", id, type, r, g, b);
 
 	    // 8bit rgb -> 16bit
 	    r = (65535 * (r & 0xFF) / 255);
@@ -217,7 +238,6 @@ xcb_image_t *XcbXpm2Image(xcb_connection_t * connection,
 	    // transparent or error
 	    pixels[i] = 0UL;
 	}
-	// printf("pixels(%d) %x\n", i, pixels[i]);
     }
 
     if (depth == 1) {
@@ -231,7 +251,6 @@ xcb_image_t *XcbXpm2Image(xcb_connection_t * connection,
     if (!image) {			// failure
 	return image;
     }
-    // printf("Image allocated\n");
 
     //
     //	Allocate empty mask (if mask is requested)
@@ -246,8 +265,10 @@ xcb_image_t *XcbXpm2Image(xcb_connection_t * connection,
 	    memset(*mask, 255, i);
 	}
     }
-    // printf("Mask build\n");
 
+    //
+    //	Copy each pixel from xpm into the image, while creating the mask
+    //
     for (y = 0; y < h; y++) {
 	line = *data++;
 	for (x = 0; x < w; x++) {
@@ -271,7 +292,7 @@ xcb_image_t *XcbXpm2Image(xcb_connection_t * connection,
 **	Create pixmap.
 **
 **	@param data		XPM data
-**	@param[OUT] mask	Pixmap for data
+**	@param[out] mask	Pixmap for data
 **
 **	@returns pixmap created from data.
 */
@@ -298,27 +319,9 @@ xcb_pixmap_t CreatePixmap(const char *const *data, xcb_pixmap_t * mask)
     pixmap = xcb_generate_id(Connection);
     xcb_create_pixmap(Connection, Screen->root_depth, pixmap, Window,
 	image->width, image->height);
-    xcb_image_put(Connection, pixmap, ForegroundGC, image, 0, 0, 0);
-    //xcb_request_check(Connection, cookie);
-
-    // printf("Image %dx%dx%d\n", image->width, image->height, image->depth);
+    xcb_image_put(Connection, pixmap, NormalGC, image, 0, 0, 0);
 
     xcb_image_destroy(image);
-
-    return pixmap;
-}
-
-////////////////////////////////////////////////////////////////////////////
-
-/**
-**	Create an empty pixmap with dockapp size.
-*/
-xcb_pixmap_t MakePixmap(void)
-{
-    xcb_pixmap_t pixmap;
-
-    pixmap = xcb_generate_id(Connection);
-    xcb_create_pixmap(Connection, Screen->root_depth, pixmap, Window, 64, 64);
 
     return pixmap;
 }
@@ -333,59 +336,73 @@ void Loop(void)
     struct pollfd fds[1];
     xcb_generic_event_t *event;
     int n;
+    int delay;
 
     fds[0].fd = xcb_get_file_descriptor(Connection);
     fds[0].events = POLLIN | POLLPRI;
 
-    // printf("Loop\n");
+    delay = Rate;			// default 1500ms delay between updates
     for (;;) {
-	n = poll(fds, 1, 1500);
+	n = poll(fds, 1, delay);
 	if (n < 0) {
 	    return;
 	}
 	if (n) {
 	    if (fds[0].revents & (POLLIN | POLLPRI)) {
-		// printf("%d: ready\n", fds[0].fd);
 		if ((event = xcb_poll_for_event(Connection))) {
 
 		    switch (event->
 			response_type & XCB_EVENT_RESPONSE_TYPE_MASK) {
 			case XCB_EXPOSE:
-			    // printf("Expose\n");
+			    // background pixmap no need to redraw?
+#if 0
 			    // collapse multi expose
 			    if (!((xcb_expose_event_t*)event)->count) {
-				xcb_clear_area(Connection, 0, Window, 0, 0, 64,
-				64);
-				//xcb_clear_area(Connection, 0, IconWindow, 0, 0, 64, 64);
+				 xcb_clear_area(Connection, 0, Window, 0, 0, 64, 64);
 				// flush the request
 				xcb_flush(Connection);
 			    }
+#endif
 			    break;
 			case XCB_DESTROY_NOTIFY:
-			    // printf("destroy\n");
+			    // window destroyed, exit application
 			    return;
 			case 0:
-			    // printf("error %x\n", event->response_type);
 			    // error_code
+			    // printf("error %x\n", event->response_type);
 			    break;
 			default:
-			    // printf("unknown %x\n", event->response_type);
 			    // Unknown event type, ignore it
+			    // printf("unknown %x\n", event->response_type);
+#ifdef SCREENSAVER
+			    if (XCB_EVENT_RESPONSE_TYPE(event) ==
+				ScreenSaverEventId) {
+				xcb_screensaver_notify_event_t *sse;
+
+				sse = (xcb_screensaver_notify_event_t *) event;
+				if (sse->code == XCB_SCREENSAVER_STATE_ON) {
+				    // screensave on, stop updates
+				    delay = -1;
+				} else {
+				    // screensave off, resume updates
+				    delay = Rate;
+				    Timeout();	// show latest info
+				}
+				break;
+			    }
+#endif
 			    break;
 		    }
 
 		    free(event);
 		} else {
 		    // No event, can happen, but we must check for close
-		    // printf("no event ready\n");
 		    if (xcb_connection_has_error(Connection)) {
-			// printf("closed\n");
 			return;
 		    }
 		}
 	    }
 	} else {
-	    //printf("Timeout\n");
 	    Timeout();
 	}
     }
@@ -393,21 +410,20 @@ void Loop(void)
 
 /**
 **	Init
+**
+**	@param argc	number of arguments
+**	@param argv	arguments vector
 */
-int Init(int argc, const char *argv[])
+int Init(int argc, char *const argv[])
 {
     const char *display_name;
     xcb_connection_t *connection;
     const xcb_setup_t *setup;
-    xcb_shm_query_version_reply_t *shm_query_ver;
-    uint8_t format;
     xcb_screen_iterator_t iter;
     xcb_screen_t *screen;
-    xcb_gcontext_t foreground;
     xcb_gcontext_t normal;
     uint32_t mask;
     uint32_t values[3];
-    xcb_image_t *image;
     xcb_pixmap_t pixmap;
     xcb_window_t window;
     xcb_size_hints_t size_hints;
@@ -415,7 +431,6 @@ int Init(int argc, const char *argv[])
     int i;
     int n;
     char *s;
-    int shared;
 
     display_name = getenv("DISPLAY");
 
@@ -427,37 +442,10 @@ int Init(int argc, const char *argv[])
 	return -1;
     }
 
-    if (0) {
-	//
-	//  Check needed externsions.
-	//
-	if (!(shm_query_ver =
-		xcb_shm_query_version_reply(connection,
-		    xcb_shm_query_version(connection), NULL))) {
-	    fprintf(stderr, "video: No shmem extension on %s\n", display_name);
-	    return -1;
-	}
-	// printf("video: shmem extension version %i.%i\n",
-	//	shm_query_ver->major_version, shm_query_ver->minor_version);
-	format = shm_query_ver->pixmap_format;
-	if (shm_query_ver->shared_pixmaps) {
-	    shared = 1;
-	} else {
-	    shared = 0;
-	}
-	free(shm_query_ver);
-    }
     //	Get the first screen
     setup = xcb_get_setup(connection);
     iter = xcb_setup_roots_iterator(setup);
     screen = iter.data;
-
-    //	Create black (foreground) graphic context
-    foreground = xcb_generate_id(connection);
-    mask = XCB_GC_FOREGROUND | XCB_GC_GRAPHICS_EXPOSURES;
-    values[0] = screen->black_pixel;
-    values[1] = 0;
-    xcb_create_gc(connection, foreground, screen->root, mask, values);
 
     //	Create normal graphic context
     normal = xcb_generate_id(connection);
@@ -467,63 +455,20 @@ int Init(int argc, const char *argv[])
     values[2] = 0;
     xcb_create_gc(connection, normal, screen->root, mask, values);
 
-    //	Shared pixmap
-    //		format from above, little overhead
-    //		can use format_iter to find bytes for shared memory.
-    /*
-       setup->bitmap_format_scanline_pad;
-       xcb_bytes_per_line  =  ((bpp * width + pad - 1) & -pad) >> 3;
-       image->bytes_per_line = xcb_bytes_per_line(
-       image->bitmap_format_scanline_pad, width, image->bits_per_pixel);
-     */
+    //	Pixmap
+    //		We use a background pixmap, nice window move and expose.
 
     pixmap = xcb_generate_id(connection);
-    if (0 && shared) {
-	image =
-	    xcb_image_create_native(connection, 64, 64, format,
-	    screen->root_depth, NULL, ~0, NULL);
-	if (!image) {
-	    fprintf(stderr, "can't create image\n");
-	    return -1;
-	}
-	// printf("%d x %d\n", image->height, image->stride);
-
-	ShmInfo.shmid =
-	    shmget(IPC_PRIVATE, image->height * image->stride,
-	    IPC_CREAT | 0777);
-	if (ShmInfo.shmid == -1U) {
-	    fprintf(stderr, "error shmget()\n");
-	    return -1;
-	}
-	ShmInfo.shmaddr = shmat(ShmInfo.shmid, 0, 0);
-	if (!ShmInfo.shmaddr) {
-	    fprintf(stderr, "error shmat()\n");
-	    return -1;
-	}
-	ShmInfo.shmseg = xcb_generate_id(connection);
-	xcb_shm_attach(connection, ShmInfo.shmseg, ShmInfo.shmid, 0);
-	shmctl(ShmInfo.shmid, IPC_RMID, 0);
-
-	// printf("%p\n", ShmInfo.shmaddr);
-	memset(ShmInfo.shmaddr, 0x8F, image->height * image->stride);
-
-	xcb_shm_create_pixmap(connection, pixmap, screen->root, 64, 64,
-	    screen->root_depth, ShmInfo.shmseg, 0);
-
-	xcb_image_destroy(image);
-    } else {
-	xcb_create_pixmap(connection, screen->root_depth, pixmap, screen->root,
-	    64, 64);
-    }
+    xcb_create_pixmap(connection, screen->root_depth, pixmap, screen->root,
+	64, 64);
 
     //	Create the window
     window = xcb_generate_id(connection);
-    // IconWindow = xcb_generate_id(connection);
 
     mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
     values[0] = screen->white_pixel;
     mask = XCB_CW_BACK_PIXMAP | XCB_CW_EVENT_MASK;
-    values[0] = pixmap;			// screen->white_pixel;
+    values[0] = pixmap;
     values[1] = XCB_EVENT_MASK_EXPOSURE;
 
     xcb_create_window(connection,	// Connection
@@ -536,23 +481,6 @@ int Init(int argc, const char *argv[])
 	XCB_WINDOW_CLASS_INPUT_OUTPUT,	// class
 	screen->root_visual,		// visual
 	mask, values);			// mask, values
-
-    mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
-    values[0] = screen->white_pixel;
-    values[1] = XCB_EVENT_MASK_EXPOSURE;
-    // create icon win
-    /*
-       xcb_create_window(connection,	// Connection
-       XCB_COPY_FROM_PARENT,		// depth (same as root)
-       IconWindow,			// window Id
-       window,				// parent window
-       0, 0,				// x, y
-       64, 64,				// width, height
-       0,				// border_width
-       XCB_WINDOW_CLASS_INPUT_OUTPUT,	// class
-       screen->root_visual,		// visual
-       mask, values);			// mask, values
-     */
 
     // XSetWMNormalHints
     size_hints.flags = 0;		// FIXME: bad lib design
@@ -571,12 +499,12 @@ int Init(int argc, const char *argv[])
 
     // XSetWMHints
     wm_hints.flags = 0;
-    //xcb_wm_hints_set_icon_window(&wm_hints, IconWindow);
     xcb_wm_hints_set_icon_pixmap(&wm_hints, pixmap);
     xcb_wm_hints_set_window_group(&wm_hints, window);
     xcb_wm_hints_set_withdrawn(&wm_hints);
-    if (argc > 1) {
-	xcb_wm_hints_set_none(&wm_hints);
+    if (WindowMode) {
+	// xcb_wm_hints_set_none(&wm_hints);
+	xcb_wm_hints_set_normal(&wm_hints);
     }
     xcb_set_wm_hints(connection, window, &wm_hints);
 
@@ -592,33 +520,35 @@ int Init(int argc, const char *argv[])
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, WM_COMMAND,
 	STRING, 8, n, s);
 
-    //	SHAPE
-    if (0) {
-	const int bytes = ((64 / 8) + 1) * 64;
-	uint8_t *mask;
-	xcb_pixmap_t pm;
+#ifdef SCREENSAVER
+    //
+    //	Prepare screensaver notify.
+    //
+    if (UseSleep) {
+	const xcb_query_extension_reply_t *reply_screensaver;
 
-	mask = malloc(bytes);
-	memset(mask, 0xFF, bytes);
-	mask[0] = 0x00;
-	pm = xcb_create_pixmap_from_bitmap_data(connection, window, mask, 64,
-	    64, 1, 0, 0, NULL);
-	// printf("mask %d\n", pm);
-	xcb_shape_mask(connection, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
-	    window, 0, 0, pm);
-	xcb_free_pixmap(connection, pm);
-	free(mask);
+	reply_screensaver =
+	    xcb_get_extension_data(connection, &xcb_screensaver_id);
+	if (reply_screensaver) {
+	    ScreenSaverEventId =
+		reply_screensaver->first_event + XCB_SCREENSAVER_NOTIFY;
+
+	    xcb_screensaver_select_input(connection, window,
+		XCB_SCREENSAVER_EVENT_NOTIFY_MASK);
+	}
     }
+#endif
+
     //	Map the window on the screen
     xcb_map_window(connection, window);
 
     //	Make sure commands are sent
     xcb_flush(connection);
 
+    //	Move local vars for global use
     Connection = connection;
     Screen = screen;
     Window = window;
-    ForegroundGC = foreground;
     NormalGC = normal;
     Pixmap = pixmap;
 
@@ -632,15 +562,8 @@ void Exit(void)
 {
     xcb_destroy_window(Connection, Window);
     Window = 0;
-    // xcb_destroy_window(Connection, IconWindow);
-    // IconWindow = 0;
 
-    // FIXME: Free of shared pixmap correct?
     xcb_free_pixmap(Connection, Pixmap);
-    if (0) {
-	xcb_shm_detach(Connection, ShmInfo.shmseg);
-	shmdt(ShmInfo.shmaddr);
-    }
 
     if (Image) {
 	xcb_free_pixmap(Connection, Image);
@@ -705,10 +628,11 @@ void DrawNumber(unsigned num, int x, int y)
     DrawString(buf, x, y);
 }
 
+#if 0
 /**
 **	Draw a number at given cordinates with small font.
 **
-**	@param	n	unsigned number
+**	@param	num	unsigned number
 **	@param	x	x pixel position
 **	@param	y	y pixel position
 */
@@ -742,11 +666,12 @@ void DrawSmallNumber(unsigned num, int x, int y)
     xcb_copy_area(Connection, Image, Pixmap, NormalGC, 64 + n1 * 4, 41, x, y,
 	4, 6);
 }
+#endif
 
 /**
 **	Draw a number at given cordinates with LCD font.
 **
-**	@param	n	unsigned number
+**	@param	num	unsigned number
 **	@param	x	x pixel position
 **	@param	y	y pixel position
 */
@@ -778,6 +703,7 @@ void DrawLcdNumber(unsigned num, int x, int y)
 	5, 7);
 }
 
+#if 0
 /**
 **	Draw time
 **
@@ -795,6 +721,7 @@ void DrawTime(int x, int y, int h, int m, int s)
     DrawString(":", x + 29, y);
     DrawNumber(s, x + 34, y);
 }
+#endif
 
 // ------------------------------------------------------------------------- //
 
@@ -867,7 +794,6 @@ void Timeout(void)
     DrawFrequency();
 
     xcb_clear_area(Connection, 0, Window, 0, 0, 64, 64);
-    // xcb_clear_area(Connection, 0, IconWindow, 0, 0, 64, 64);
     // flush the request
     xcb_flush(Connection);
 }
@@ -894,20 +820,84 @@ void PrepareData(void)
 // ------------------------------------------------------------------------- //
 
 /**
-**	Main entry point.
+**	Print version.
 */
-int main(int argc, const char *argv[])
+static void PrintVersion(void)
 {
-    if (argc > 1) {
-	printf("wmc2d core2duo dockapp Version 2.02"
+    printf("wmc2d core2duo dockapp Version " VERSION
 #ifdef GIT_REV
-	    "(GIT-" GIT_REV ")"
+	"(GIT-" GIT_REV ")"
 #endif
-	    ", (c) 2004,2009 by Lutz Sammer\n"
-	    "\tLicense AGPLv3: GNU Affero General Public License version 3\n"
-	    "Usage: wmc2d\n");
-	return 0;
+	",\n\t(c) 2004, 2009, 2010 by Lutz Sammer\n"
+	"\tLicense AGPLv3: GNU Affero General Public License version 3\n");
+}
+
+/**
+**	Print usage.
+*/
+static void PrintUsage(void)
+{
+    printf("Usage: wmc2d [-r rate] [-s] [-w]\n"
+	"\t-r rate\trefresh rate (in milliseconds, default 1500 ms)\n"
+	"\t-s\tsleep while screen-saver is running or video is blanked\n"
+	"\t-w\tStart in window mode\n" "Only idiots print usage on stderr!\n");
+}
+
+/**
+**	Main entry point.
+**
+**	@param argc	number of arguments
+**	@param argv	arguments vector
+*/
+int main(int argc, char *const argv[])
+{
+    Rate = 1500;			// 1500 ms default update rate
+
+    //
+    //	Parse arguments.
+    //
+    for (;;) {
+	switch (getopt(argc, argv, "h?-r:sw")) {
+	    case 'r':			// update rate
+		Rate = atoi(optarg);
+		continue;
+	    case 's':			// sleep while screensaver running
+		UseSleep = 1;
+		continue;
+	    case 'w':			// window mode
+		WindowMode = 1;
+		continue;
+
+	    case EOF:
+		break;
+	    case '?':
+	    case 'h':			// help usage
+		PrintVersion();
+		PrintUsage();
+		return 0;
+	    case '-':
+		fprintf(stderr, "We need no long options\n");
+		PrintUsage();
+		return -1;
+	    case ':':
+		PrintVersion();
+		fprintf(stderr, "Missing argument for option '%c'\n", optopt);
+		return -1;
+	    default:
+		PrintVersion();
+		fprintf(stderr, "Unkown option '%c'\n", optopt);
+		return -1;
+	}
+	break;
     }
+    if (optind < argc) {
+	PrintVersion();
+	while (optind < argc) {
+	    fprintf(stderr, "Unhandled argument '%s'\n", argv[optind++]);
+	}
+	return -1;
+    }
+
     Init(argc, argv);
 
     PrepareData();

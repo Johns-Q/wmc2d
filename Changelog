@@ -1,4 +1,11 @@
 User johns
+Date Fri May 21 12:49:31 CEST 2010
+    Added doxygen documentation generation.
+    Added support to sleep while screen-saver is running or video is blanked.
+    Added support for command-line parsing.
+    Window-mode and update rate are now command-line configurable.
+    Removed old unused code. (Use the older sources for shared memory example)
+
 Date Wed May 12 13:45:26 CEST 2010
 
     Renamed info files and Makefile cleanup.

@@ -18,13 +18,17 @@ GNU Affero General Public License for more details.
 
 $Id: $
 
-This is a small dockapp, which shows the core 2 duo temperature and
-the temperature of ACPI thermal zone 0, which is normaly the motherboard
-temperature.
+This is a small dockapp, which shows the core temperature and cpu frequency
+from 2 upto 4 cores/cpus and the temperature of upto two ACPI thermal zones,
+which are normaly the motherboard temperature.
+
+All cpus, which are supported by the linux kernel "coretemp" and "cpufreq"
+modules, could be monitored. f.e. core 2, core i.
 
 To compile you must have libxcb (xcb-dev) installed.
 
 You can enable/disable screen-saver support see wmc2d.c beginning of the file.
+(default is enabled)
 
 Just make make and play.
 

@@ -1,7 +1,7 @@
 ///
 ///	@file wmc2d.c		@brief	Dockapp for core 2 duo temperature
 ///
-///	Copyright (c) 2004, 2009, 2010 by Lutz Sammer.  All Rights Reserved.
+///	Copyright (c) 2004, 2009, 2010 by Lutz Sammer.	All Rights Reserved.
 ///
 ///	Contributor(s):
 ///		Bitmap and design based on wmbp6.
@@ -26,17 +26,21 @@
 /**
 **	@mainpage
 **
-**	This is a small dockapp, which shows the core 2 duo temperature and
-**	the temperature of ACPI thermal zone 0, which is normaly the
-**	motherboard temperature.
-**
+**	This is a small dockapp, which shows the core temperature and cpu
+**	frequency from 2 upto 4 cores/cpus and the temperature of upto two
+**	@n
+**	All cpus, which are supported by the linux kernel "coretemp" and
+**	"cpufreq" modules, could be monitored. f.e. core 2, core i.
 **	@n
 **	To compile you must have libxcb (xcb-dev) installed.
-**
 **	@n
-**	The source is a single file with less than 1000 lines. The sources
+**	The source is a single file with less than 1200 lines. The sources
 **	are (hopefully) good documented.  They can be used as an example,
 **	how to write your own dockapp, applet or widget.
+**	@n
+**	Started with version 2.04 the number of cpus and thermal zones
+**	can be configured.  The background is no longer stored in the xpm;
+**	it is now dynamic generated. See older version for a simpler example.
 */
 
 ////////////////////////////////////////////////////////////////////////////
@@ -88,6 +92,11 @@ int ScreenSaverEventId;			///< screen saver event ids
 static int Rate;			///< update rate in ms
 static char WindowMode;			///< start in window mode
 static char UseSleep;			///< use sleep while screensaver runs
+static char StartCpu;			///< first cpu nr. to use
+static char Cpus;			///< number of cpus
+static char JoinCpus;			///< aggregate numbers of two cpus
+static char ThermalZones;		///< number of thermal zones
+static int TurboBoostFreq;		///< turbo boost frequency
 
 extern void Timeout(void);		///< called from event loop
 
@@ -251,7 +260,6 @@ xcb_image_t *XcbXpm2Image(xcb_connection_t * connection,
     if (!image) {			// failure
 	return image;
     }
-
     //
     //	Allocate empty mask (if mask is requested)
     //
@@ -265,7 +273,6 @@ xcb_image_t *XcbXpm2Image(xcb_connection_t * connection,
 	    memset(*mask, 255, i);
 	}
     }
-
     //
     //	Copy each pixel from xpm into the image, while creating the mask
     //
@@ -351,14 +358,15 @@ void Loop(void)
 	    if (fds[0].revents & (POLLIN | POLLPRI)) {
 		if ((event = xcb_poll_for_event(Connection))) {
 
-		    switch (event->
-			response_type & XCB_EVENT_RESPONSE_TYPE_MASK) {
+		    switch (event->response_type &
+			XCB_EVENT_RESPONSE_TYPE_MASK) {
 			case XCB_EXPOSE:
-			    // background pixmap no need to redraw?
+			    // background pixmap no need to redraw
 #if 0
 			    // collapse multi expose
-			    if (!((xcb_expose_event_t*)event)->count) {
-				 xcb_clear_area(Connection, 0, Window, 0, 0, 64, 64);
+			    if (!((xcb_expose_event_t *) event)->count) {
+				xcb_clear_area(Connection, 0, Window, 0, 0, 64,
+				    64);
 				// flush the request
 				xcb_flush(Connection);
 			    }
@@ -443,11 +451,10 @@ int Init(int argc, char *const argv[])
     }
     //	Get the requested screen number
     iter = xcb_setup_roots_iterator(xcb_get_setup(connection));
-    for (i=0; i<screen_nr; ++i) {
+    for (i = 0; i < screen_nr; ++i) {
 	xcb_screen_next(&iter);
     }
     screen = iter.data;
-
 
     //	Create normal graphic context
     normal = xcb_generate_id(connection);
@@ -461,14 +468,12 @@ int Init(int argc, char *const argv[])
     //		We use a background pixmap, nice window move and expose.
 
     pixmap = xcb_generate_id(connection);
-    xcb_create_pixmap(connection, screen->root_depth, pixmap, screen->root,
-	64, 64);
+    xcb_create_pixmap(connection, screen->root_depth, pixmap, screen->root, 64,
+	64);
 
     //	Create the window
     window = xcb_generate_id(connection);
 
-    mask = XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK;
-    values[0] = screen->white_pixel;
     mask = XCB_CW_BACK_PIXMAP | XCB_CW_EVENT_MASK;
     values[0] = pixmap;
     values[1] = XCB_EVENT_MASK_EXPOSURE;
@@ -630,7 +635,46 @@ void DrawNumber(unsigned num, int x, int y)
     DrawString(buf, x, y);
 }
 
-#if 0
+/**
+**	Draw a number at given cordinates with small font.
+**
+**	@param	num	unsigned number
+**	@param	x	x pixel position
+**	@param	y	y pixel position
+*/
+void DrawRedSmallNumber(unsigned num, int x, int y)
+{
+    int n1000;
+    int n100;
+    int n10;
+    int n1;
+
+    n1 = num % 10;
+    n10 = (num / 10) % 10;
+    n100 = (num / 100) % 10;
+    n1000 = (num / 1000) % 10;
+
+    if (n1000) {
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, n1000 * 6, 36, x, y,
+	    6, 7);
+    } else {
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, 2, 2, x, y, 6, 7);
+    }
+    x += 6;
+
+    if (n1000 || n100) {
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, n100 * 6, 36, x, y,
+	    6, 7);
+	x += 6;
+    }
+    if (n1000 || n100 || n10) {
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, n10 * 6, 36, x, y,
+	    6, 7);
+	x += 6;
+    }
+    xcb_copy_area(Connection, Image, Pixmap, NormalGC, n1 * 6, 36, x, y, 6, 7);
+}
+
 /**
 **	Draw a number at given cordinates with small font.
 **
@@ -651,24 +695,25 @@ void DrawSmallNumber(unsigned num, int x, int y)
     n1000 = (num / 1000) % 10;
 
     if (n1000) {
-	xcb_copy_area(Connection, Image, Pixmap, NormalGC, 64 + n1000 * 4, 41,
-	    x, y, 4, 6);
-	x += 4;
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, n1000 * 6, 50, x, y,
+	    6, 7);
+    } else {
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, 2, 2, x, y, 6, 7);
     }
+    x += 6;
+
     if (n1000 || n100) {
-	xcb_copy_area(Connection, Image, Pixmap, NormalGC, 64 + n100 * 4, 41,
-	    x, y, 4, 6);
-	x += 4;
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, n100 * 6, 50, x, y,
+	    6, 7);
+	x += 6;
     }
     if (n1000 || n100 || n10) {
-	xcb_copy_area(Connection, Image, Pixmap, NormalGC, 64 + n10 * 4, 41, x,
-	    y, 4, 6);
-	x += 4;
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, n10 * 6, 50, x, y,
+	    6, 7);
+	x += 6;
     }
-    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 64 + n1 * 4, 41, x, y,
-	4, 6);
+    xcb_copy_area(Connection, Image, Pixmap, NormalGC, n1 * 6, 50, x, y, 6, 7);
 }
-#endif
 
 /**
 **	Draw a number at given cordinates with LCD font.
@@ -683,47 +728,30 @@ void DrawLcdNumber(unsigned num, int x, int y)
     int n10;
     int n1;
 
+    if (num > 999) {
+	num = 999;
+    }
+
     n1 = num % 10;
     n10 = (num / 10) % 10;
     n100 = (num / 100) % 10;
 
     if (n100) {
-	xcb_copy_area(Connection, Image, Pixmap, NormalGC, 64 + n100 * 5, 34,
-	    x, y, 5, 7);
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, n100 * 5, 57, x, y,
+	    5, 7);
     } else {
-	xcb_copy_area(Connection, Image, Pixmap, NormalGC, x, y, x, y, 5, 7);
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, 2, 24, x, y, 5, 7);
     }
     x += 6;
     if (n100 || n10) {
-	xcb_copy_area(Connection, Image, Pixmap, NormalGC, 64 + n10 * 5, 34, x,
-	    y, 5, 7);
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, n10 * 5, 57, x, y,
+	    5, 7);
     } else {
-	xcb_copy_area(Connection, Image, Pixmap, NormalGC, x, y, x, y, 5, 7);
+	xcb_copy_area(Connection, Image, Pixmap, NormalGC, 2, 24, x, y, 5, 7);
     }
     x += 7;
-    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 64 + n1 * 5, 34, x, y,
-	5, 7);
+    xcb_copy_area(Connection, Image, Pixmap, NormalGC, n1 * 5, 57, x, y, 5, 7);
 }
-
-#if 0
-/**
-**	Draw time
-**
-**	@param	x	x pixel position
-**	@param	y	y pixel position
-**	@param	h	hours of time
-**	@param	m	minutes of time
-**	@param	s	seconds of time
-*/
-void DrawTime(int x, int y, int h, int m, int s)
-{
-    DrawNumber(h, x, y);
-    DrawString(":", x + 12, y);
-    DrawNumber(m, x + 17, y);
-    DrawString(":", x + 29, y);
-    DrawNumber(s, x + 34, y);
-}
-#endif
 
 // ------------------------------------------------------------------------- //
 
@@ -732,7 +760,7 @@ void DrawTime(int x, int y, int h, int m, int s)
 **
 **	@param file	Name of file containing only the number.
 */
-int ReadNumber(const char *file)
+static int ReadNumber(const char *file)
 {
     int fd;
     int n;
@@ -753,33 +781,113 @@ int ReadNumber(const char *file)
 /**
 **	Draw temperatures. cpu0, cpu1, chipset
 */
-void DrawTemperaturs(void)
+static void DrawTemperaturs(void)
 {
     int n;
+    int i;
+    static char temp[] = "/sys/devices/platform/coretemp.0/temp1_input";
 
-    n = ReadNumber("/sys/devices/platform/coretemp.0/temp1_input");
-    DrawLcdNumber(n / 100, 33, 6);
-    n = ReadNumber("/sys/devices/platform/coretemp.1/temp1_input");
-    DrawLcdNumber(n / 100, 33, 21);
-    n = ReadNumber("/sys/class/thermal/thermal_zone0/temp");
-    DrawLcdNumber(n / 100, 33, 36);
+    switch (Cpus) {
+	case 4:
+	    for (i = 0; i < 4; ++i) {
+		temp[strlen("/sys/devices/platform/coretemp.")] =
+		    '0' + StartCpu + (i << JoinCpus);
+		n = ReadNumber(temp);
+		DrawLcdNumber(n / 100, 2 + 2, 2 + i * 12 + 2);
+	    }
+
+	    if (ThermalZones >= 1) {
+		n = ReadNumber("/sys/class/thermal/thermal_zone0/temp");
+		if (n >= 0) {
+		    DrawLcdNumber(n / 100, 2 + 2, 2 + 49 + 2);
+		}
+	    }
+
+	    if (ThermalZones >= 2) {
+		n = ReadNumber("/sys/class/thermal/thermal_zone1/temp");
+		if (n >= 0) {
+		    DrawLcdNumber(n / 100, 2 + 31 + 2, 2 + 49 + 2);
+		}
+	    }
+
+	    break;
+
+	case 2:
+	default:
+	    temp[strlen("/sys/devices/platform/coretemp.")] =
+		'0' + StartCpu + 0;
+	    n = ReadNumber(temp);
+	    DrawLcdNumber(n / 100, 3 + 29 + 2, 3 + 2);
+	    temp[strlen("/sys/devices/platform/coretemp.")] =
+		'0' + StartCpu + 1;
+	    DrawLcdNumber(n / 100, 3 + 29 + 2, 3 + 15 + 2);
+
+	    // temperature zones
+	    if (ThermalZones >= 2) {
+		n = ReadNumber("/sys/class/thermal/thermal_zone0/temp");
+		DrawLcdNumber(n / 100, 3 + 2, 3 + 30 + 2);
+
+		n = ReadNumber("/sys/class/thermal/thermal_zone1/temp");
+		n = 9999;
+		if (n >= 0) {
+		    DrawLcdNumber(n / 100, 3 + 29 + 2, 3 + 30 + 2);
+		}
+	    } else if (ThermalZones >= 1) {
+		n = ReadNumber("/sys/class/thermal/thermal_zone0/temp");
+		if (n >= 0) {
+		    DrawLcdNumber(n / 100, 3 + 29 + 2, 3 + 30 + 2);
+		}
+	    }
+
+	    break;
+    }
 }
 
 /**
 **	Draw frequency
 */
-void DrawFrequency(void)
+static void DrawFrequency(void)
 {
     int n;
-    char buf[32];
+    int i;
+    static char flag;
+    static char freq[] =
+	"/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq";
 
-    n = ReadNumber("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq");
-    sprintf(buf, "%4d", n / 1000);
-    DrawString(buf, 6, 50);
+    flag ^= 1;
+    switch (Cpus) {
+	case 4:
+	    for (i = 0; i < 4; ++i) {
+		freq[strlen("/sys/devices/system/cpu/cpu")] =
+		    '0' + StartCpu + (i << JoinCpus) + (JoinCpus ? flag : 0);
+		n = ReadNumber(freq);
+		if (n == TurboBoostFreq) {
+		    DrawRedSmallNumber(n / 1000, 2 + 33 + 2, 2 + i * 12 + 2);
+		} else {
+		    DrawSmallNumber(n / 1000, 2 + 33 + 2, 2 + i * 12 + 2);
+		}
 
-    n = ReadNumber("/sys/devices/system/cpu/cpu1/cpufreq/scaling_cur_freq");
-    sprintf(buf, "%4d", n / 1000);
-    DrawString(buf, 35, 50);
+	    }
+	    break;
+
+	case 2:
+	default:
+	    freq[strlen("/sys/devices/system/cpu/cpu")] = '0' + StartCpu + 0;
+	    n = ReadNumber(freq);
+	    if (n == TurboBoostFreq) {
+		DrawRedSmallNumber(n / 1000, 3 + 2, 46 + 3 + 2);
+	    } else {
+		DrawSmallNumber(n / 1000, 3 + 2, 46 + 3 + 2);
+	    }
+	    freq[strlen("/sys/devices/system/cpu/cpu")] = '0' + StartCpu + 1;
+	    n = ReadNumber(freq);
+	    if (n == TurboBoostFreq) {
+		DrawRedSmallNumber(n / 1000, 3 + 31 + 2, 46 + 3 + 2);
+	    } else {
+		DrawSmallNumber(n / 1000, 3 + 31 + 2, 46 + 3 + 2);
+	    }
+	    break;
+    }
 }
 
 // ------------------------------------------------------------------------- //
@@ -805,16 +913,127 @@ void Timeout(void)
 */
 void PrepareData(void)
 {
-    xcb_pixmap_t shape;
+    xcb_rectangle_t rectangles[10];
+    int len;
 
-    Image = CreatePixmap((void *)wmc2d_xpm, &shape);
-    // Copy background part
+    /// shape rectangle shortcut macro
+#define _R(i, xx, yy, w, h) \
+    rectangles[i].x = xx; \
+    rectangles[i].y = yy; \
+    rectangles[i].width = w; \
+    rectangles[i].height = h;
+
+    Image = CreatePixmap((void *)wmc2d_xpm, NULL);
+    // clear background
     xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 0, 0, 0, 64, 64);
-    if (shape) {
-	xcb_shape_mask(Connection, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
-	    Window, 0, 0, shape);
-	xcb_free_pixmap(Connection, shape);
+
+    switch (Cpus) {
+	case 4:
+	    // temperature
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 22, 2, 2, 29,
+		11);
+	    _R(0, 2, 2, 29, 11);
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 22, 2,
+		12 + 2, 29, 11);
+	    _R(1, 2, 12 + 2, 29, 11);
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 22, 2,
+		24 + 2, 29, 11);
+	    _R(2, 2, 24 + 2, 29, 11);
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 22, 2,
+		36 + 2, 29, 11);
+	    _R(3, 2, 36 + 2, 29, 11);
+	    len = 4;
+	    if (ThermalZones >= 1) {
+		xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 22, 2,
+		    2 + 49, 29, 11);
+		_R(len, 2, 2 + 49, 29, 11);
+		++len;
+	    }
+	    if (ThermalZones >= 2) {
+		xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 22,
+		    2 + 31, 2 + 49, 29, 11);
+		_R(len, 2 + 31, 2 + 49, 29, 11);
+		++len;
+	    }
+	    // frequency
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 11, 2 + 33,
+		2, 27, 11);
+	    _R(len, 2 + 33, 2, 27, 11);
+	    ++len;
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 11, 2 + 33,
+		12 + 2, 27, 11);
+	    _R(len, 2 + 33, 12 + 2, 27, 11);
+	    ++len;
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 11, 2 + 33,
+		24 + 2, 27, 11);
+	    _R(len, 2 + 33, 24 + 2, 27, 11);
+	    ++len;
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 11, 2 + 33,
+		36 + 2, 27, 11);
+	    _R(len, 2 + 33, 36 + 2, 27, 11);
+	    ++len;
+
+	    break;
+
+	case 2:
+	default:
+	    // text areas cpu
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 0, 3, 3, 26,
+		11);
+	    _R(0, 3, 3, 26, 11);
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 0, 3, 15 + 3,
+		26, 11);
+	    _R(1, 3, 15 + 3, 26, 11);
+	    // text cpu
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 29, 0, 5, 5, 23,
+		7);
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 29, 7, 5,
+		15 + 5, 23, 7);
+	    // temperature cpu
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 22, 3 + 29,
+		3, 29, 11);
+	    _R(2, 3 + 29, 3, 29, 11);
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 22, 3 + 29,
+		15 + 3, 29, 11);
+	    _R(3, 3 + 29, 15 + 3, 29, 11);
+
+	    // frequency
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 11, 3,
+		46 + 3, 27, 11);
+	    _R(4, 3, 46 + 3, 27, 11);
+	    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 11, 3 + 31,
+		46 + 3, 27, 11);
+	    _R(5, 3 + 31, 46 + 3, 27, 11);
+	    len = 6;
+
+	    if (ThermalZones >= 1) {
+		if (ThermalZones == 1) {
+		    // text area for only 1 zone
+		    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 0, 3,
+			30 + 3, 26, 11);
+		    _R(6, 3, 3 + 30, 26, 11);
+		    // text for only 1 zone
+		    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 29, 14,
+			5, 3 + 30 + 2, 23, 7);
+		} else {
+		    // temperature area for zone
+		    xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 22,
+			3, 3 + 30, 29, 11);
+		    _R(6, 3, 3 + 30, 29, 11);
+		}
+
+		// temperature area zone 2 or 1
+		xcb_copy_area(Connection, Image, Pixmap, NormalGC, 0, 22,
+		    3 + 29, 30 + 3, 29, 11);
+		_R(7, 3 + 29, 30 + 3, 29, 11);
+		len = 8;
+	    }
+
+	    break;
     }
+
+    xcb_shape_rectangles(Connection, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING,
+	0, Window, 0, 0, len, rectangles);
 
     Timeout();
 }
@@ -826,7 +1045,7 @@ void PrepareData(void)
 */
 static void PrintVersion(void)
 {
-    printf("wmc2d core2duo dockapp Version " VERSION
+    printf("wmc2d coretemp/cpufreq dockapp Version " VERSION
 #ifdef GIT_REV
 	"(GIT-" GIT_REV ")"
 #endif
@@ -839,10 +1058,17 @@ static void PrintVersion(void)
 */
 static void PrintUsage(void)
 {
-    printf("Usage: wmc2d [-r rate] [-s] [-w]\n"
+    printf
+	("Usage: wmc2d [-c n] [-j] [-n n] [-r rate] [-s] [-t f] [-w] [-z n]\n"
+	"\t-c n\tfirst CPU to use (to monitor more than 4 cores)\n"
+	"\t-j\tjoin two CPUs (for hyper-threading CPUs)\n"
+	"\t-n n\tnumber of CPU to display (2 or 4)\n"
 	"\t-r rate\trefresh rate (in milliseconds, default 1500 ms)\n"
 	"\t-s\tsleep while screen-saver is running or video is blanked\n"
-	"\t-w\tStart in window mode\n" "Only idiots print usage on stderr!\n");
+	"\t-t f\tturbo boost frequency in Mhz (f.e. 1734000 for 1.73 Ghz)\n"
+	"\t-w\tStart in window mode\n"
+	"\t-z n\tnumber of ACPI thermal zones (0, 1 or 2)\n"
+	"Only idiots print usage on stderr!\n");
 }
 
 /**
@@ -854,17 +1080,47 @@ static void PrintUsage(void)
 int main(int argc, char *const argv[])
 {
     Rate = 1500;			// 1500 ms default update rate
+    Cpus = 2;				// two cpus default
+    ThermalZones = 1;			// one thermal zone default
 
     //
     //	Parse arguments.
     //
     for (;;) {
-	switch (getopt(argc, argv, "h?-r:sw")) {
+	switch (getopt(argc, argv, "h?-c:jn:r:st:wz:")) {
+	    case 'c':			// cpu start
+		StartCpu = atoi(optarg);
+		continue;
+	    case 'j':			// join cpu's
+		JoinCpus = 1;
+		continue;
+	    case 'n':			// number of cpus/cores
+		Cpus = atoi(optarg);
+		if (Cpus != 2 && Cpus != 4) {
+		    PrintVersion();
+		    fprintf(stderr,
+			"Sorry %d cpu(s)/core(s) aren't supported\n", Cpus);
+		    return -1;
+		}
+		continue;
 	    case 'r':			// update rate
 		Rate = atoi(optarg);
 		continue;
 	    case 's':			// sleep while screensaver running
 		UseSleep = 1;
+		continue;
+	    case 't':			// turbo boost frequency
+		TurboBoostFreq = atoi(optarg);
+		continue;
+	    case 'z':			// number of thermal zones
+		ThermalZones = atoi(optarg);
+		if (ThermalZones < 0 || ThermalZones > 2) {
+		    PrintVersion();
+		    fprintf(stderr,
+			"Sorry %d themal zone(s) aren't supported\n",
+			ThermalZones);
+		    return -1;
+		}
 		continue;
 	    case 'w':			// window mode
 		WindowMode = 1;

@@ -20,7 +20,7 @@
 #	$Id$
 #----------------------------------------------------------------------------
 
-VERSION =	"2.03"
+VERSION =	"2.04"
 GIT_REV =	$(shell git describe --always 2>/dev/null)
 
 CC=	gcc

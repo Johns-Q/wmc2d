@@ -1,9 +1,17 @@
 User johns
+
+Date Mon Aug 16 13:19:40 CEST 2010
+
+    Removed background image from xpm, background is now dynamic generated.
+    Support for commandline configured number of cores/cpus and thermal zones.
+    Added start index, for more than one dockapp running.
+
 Date Thu May 27 16:26:13 CEST 2010
 
     Added support to run on any X11 screen.
 
 Date Fri May 21 12:49:31 CEST 2010
+
     Added doxygen documentation generation.
     Added support to sleep while screen-saver is running or video is blanked.
     Added support for command-line parsing.

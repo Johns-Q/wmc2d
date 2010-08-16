@@ -34,18 +34,35 @@ E</A><P>
 
       <h2>About</h2>
 
-      wmc2d is a dockapp to monitor the core 2 duo temperature and frequency.
+      wmc2d is a dockapp to monitor the coretemp temperature and cpufreq
+      frequency.
       <p>
       License AGPLv3: GNU Affero General Public License version 3
       <p>
-      This is a small dockapp, which shows the core 2 duo cpu temperatures and
-      the temperature of ACPI thermal zone 0, which is normaly the motherboard
-      temperature.
+      The name comes from the "core 2 duo", but now more cpu types are
+      supported.
+      <p>
+      This is a small dockapp, which shows the core temperature and cpu
+      frequency from 2 upto 4 cores/cpus and the temperature of upto two ACPI
+      thermal zones, which are normaly the motherboard temperature.
+      <p>
+      All cpus, which are supported by the linux kernel "coretemp" and "cpufreq"
+      modules, could be monitored. f.e. core 2, core i.
+
       <P>
       Only libxcb (X C-language Bindings library) and the standard C library
       are as external libraries required.
 
       <h2>News</h2>
+	<h3>
+	Mon Aug 16 13:30:54 CEST 2010
+	</h3>
+
+	Version 2.04 released.<p>
+	Added support for 'core2' or 'core i' dual or quad core cpu's.<br>
+	Added support to display 0, 1 or 2 thermal zones.<br>
+	Added support to run on any x11 screen.<br>
+	Added support to show turboboost frequency in red color<br>
 
 	<h3>
 	Fri May 21 13:01:21 CEST 2010
@@ -75,16 +92,25 @@ E</A><P>
 
 	Version 2.0 released.
 
+      <h2>Documentation</h2>
+
+      <a href="html">doxygen generated source documentation.</a>
+
       <h2>Screenshots</h2>
 
       <img src="wmc2d_1.png" alt="[screenshot1]" width=64 height=64
 	title="Screenshot transparent">
       <img src="wmc2d_2.png" alt="[screenshot2]" width=64 height=64
-	title="Screenshot with fluxstyle emerge"
+	title="Screenshot with fluxstyle emerge">
+      <img src="wmc2d_3.png" alt="[screenshot3]" width=64 height=64
+	title="Screenshot with 4 cpu cores and 1 thermal zone">
 
       <h2>Downloads</h2>
 
-      Source Version 2.03 (GIT-1062ac6)
+      Source Version 2.04 (GIT-7ae51bb)
+      <BR><a href="wmc2d-2010-08-16-13.tar.bz2">wmc2d-2010-08-16-13.tar.bz2</a>
+
+      <P>Source Version 2.03 (GIT-1062ac6)
       <BR><a href="wmc2d-2010-05-21-12.tar.bz2">wmc2d-2010-05-21-12.tar.bz2</a>
 
       <P>Source Version 2.02 (GIT-2305b28)

@@ -32,7 +32,7 @@ LIBS=	$(STATIC) `pkg-config --libs $(STATIC) \
 	xcb-screensaver xcb-icccm xcb-shape xcb-shm xcb-image xcb` -lpthread
 
 OBJS=	wmc2d.o
-FILES=	Makefile README Changelog AGPL-3.0.txt wmc2d.doxyfile wmc2d.xpm
+FILES=	Makefile README Changelog AGPL-3.0.txt wmc2d.doxyfile wmc2d.xpm wmc2d.1
 
 all:	wmc2d
 

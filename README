@@ -1,4 +1,4 @@
-@file README		@brief	Core 2 Duo temperature dockapp.
+@file README		@brief	coretemp/cpufreq monitor dockapp
 
 Copyright (c) 2004, 2009, 2010 by Lutz Sammer.  All Rights Reserved.
 
@@ -16,14 +16,14 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU Affero General Public License for more details.
 
-$Id: $
+$Id$
 
 This is a small dockapp, which shows the core temperature and cpu frequency
 from 2 upto 4 cores/cpus and the temperature of upto two ACPI thermal zones,
 which are normaly the motherboard temperature.
 
 All cpus, which are supported by the linux kernel "coretemp" and "cpufreq"
-modules, could be monitored. f.e. core 2, core i.
+modules, could be monitored.  f.e. core 2, atom and core iX.
 
 To compile you must have libxcb (xcb-dev) installed.
 
@@ -37,6 +37,9 @@ Use wmc2d -h to see the command line options.
 Requires:
 	x11-libs/libxcb
 		X C-language Bindings library
+		http://xcb.freedesktop.org/
+	x11-libs/xcb-util
+		X C-language Bindings sample implementations
 		http://xcb.freedesktop.org/
 
 Lutz Sammer johns98@gmx.net

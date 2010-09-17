@@ -64,9 +64,10 @@ dist:
 	tar cjCf .. wmc2d-`date +%F-%H`.tar.bz2 \
 		$(addprefix wmc2d/, $(FILES) $(OBJS:.o=.c))
 
-install:
+install: wmc2d wmc2d.1
 	strip --strip-unneeded -R .comment wmc2d
 	install -s wmc2d /usr/local/bin/
+	install -D wmc2d.1 /usr/local/share/man/man1/wmc2d.1
 
 help:
 	@echo "make all|doc|indent|clean|clobber|dist|install|help"

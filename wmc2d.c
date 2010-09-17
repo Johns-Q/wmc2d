@@ -28,9 +28,14 @@
 **
 **	This is a small dockapp, which shows the core temperature and cpu
 **	frequency from 2 upto 4 cores/cpus and the temperature of upto two
+**	thermal zones, which are normaly the motherboard temperature.
 **	@n
 **	All cpus, which are supported by the linux kernel "coretemp" and
-**	"cpufreq" modules, could be monitored. f.e. core 2, core i.
+**	"cpufreq" modules, could be monitored. f.e. core 2, atom and core ix.
+**	@n
+**	All thermal zones which could be read from files are supported.  f.e.
+**	ACPI through /sys/class/thermal/thermal_zoneX/temp or hardware sensors
+**	through /sys/devices/platform/<chip>/temp1_input.
 **	@n
 **	To compile you must have libxcb (xcb-dev) installed.
 **	@n
@@ -97,6 +102,11 @@ static char Cpus;			///< number of cpus
 static char JoinCpus;			///< aggregate numbers of two cpus
 static char ThermalZones;		///< number of thermal zones
 static int TurboBoostFreq;		///< turbo boost frequency
+
+static const char *ThermlZoneNames[] = {	///< thermal zone names
+    "/sys/class/thermal/thermal_zone0/temp",
+    "/sys/class/thermal/thermal_zone1/temp",
+};
 
 extern void Timeout(void);		///< called from event loop
 
@@ -358,8 +368,8 @@ void Loop(void)
 	    if (fds[0].revents & (POLLIN | POLLPRI)) {
 		if ((event = xcb_poll_for_event(Connection))) {
 
-		    switch (event->response_type &
-			XCB_EVENT_RESPONSE_TYPE_MASK) {
+		    switch (event->
+			response_type & XCB_EVENT_RESPONSE_TYPE_MASK) {
 			case XCB_EXPOSE:
 			    // background pixmap no need to redraw
 #if 0
@@ -797,14 +807,14 @@ static void DrawTemperaturs(void)
 	    }
 
 	    if (ThermalZones >= 1) {
-		n = ReadNumber("/sys/class/thermal/thermal_zone0/temp");
+		n = ReadNumber(ThermlZoneNames[0]);
 		if (n >= 0) {
 		    DrawLcdNumber(n / 100, 2 + 2, 2 + 49 + 2);
 		}
 	    }
 
 	    if (ThermalZones >= 2) {
-		n = ReadNumber("/sys/class/thermal/thermal_zone1/temp");
+		n = ReadNumber(ThermlZoneNames[1]);
 		if (n >= 0) {
 		    DrawLcdNumber(n / 100, 2 + 31 + 2, 2 + 49 + 2);
 		}
@@ -824,16 +834,16 @@ static void DrawTemperaturs(void)
 
 	    // temperature zones
 	    if (ThermalZones >= 2) {
-		n = ReadNumber("/sys/class/thermal/thermal_zone0/temp");
+		n = ReadNumber(ThermlZoneNames[0]);
 		DrawLcdNumber(n / 100, 3 + 2, 3 + 30 + 2);
 
-		n = ReadNumber("/sys/class/thermal/thermal_zone1/temp");
+		n = ReadNumber(ThermlZoneNames[1]);
 		n = 9999;
 		if (n >= 0) {
 		    DrawLcdNumber(n / 100, 3 + 29 + 2, 3 + 30 + 2);
 		}
 	    } else if (ThermalZones >= 1) {
-		n = ReadNumber("/sys/class/thermal/thermal_zone0/temp");
+		n = ReadNumber(ThermlZoneNames[0]);
 		if (n >= 0) {
 		    DrawLcdNumber(n / 100, 3 + 29 + 2, 3 + 30 + 2);
 		}
@@ -1059,15 +1069,18 @@ static void PrintVersion(void)
 static void PrintUsage(void)
 {
     printf
-	("Usage: wmc2d [-c n] [-j] [-n n] [-r rate] [-s] [-t f] [-w] [-z n]\n"
-	"\t-c n\tfirst CPU to use (to monitor more than 4 cores)\n"
+	("Usage: wmc2d [-?|-h][-jsw][-0 z0] [-1 -z1] [-c n] [-n n] [-r rate] [-t f] [-z n]\n"
+	"\t-?|-h\tshow this help page\n"
 	"\t-j\tjoin two CPUs (for hyper-threading CPUs)\n"
+	"\t-s\tsleep while screen-saver is running or video is blanked\n"
+	"\t-w\tstart in window mode\n"
+	"\t-0 z0\tfile name of thermal zone 0 (defaults to ACPI Zone0)\n"
+	"\t-1 z1\tfile name of thermal zone 1 (defaults to ACPI Zone1)\n"
+	"\t-c n\tfirst CPU to use (to monitor more than 4 cores)\n"
 	"\t-n n\tnumber of CPU to display (2 or 4)\n"
 	"\t-r rate\trefresh rate (in milliseconds, default 1500 ms)\n"
-	"\t-s\tsleep while screen-saver is running or video is blanked\n"
 	"\t-t f\tturbo boost frequency in Mhz (f.e. 1734000 for 1.73 Ghz)\n"
-	"\t-w\tStart in window mode\n"
-	"\t-z n\tnumber of ACPI thermal zones (0, 1 or 2)\n"
+	"\t-z n\tnumber of thermal zones (0, 1 or 2)\n"
 	"Only idiots print usage on stderr!\n");
 }
 
@@ -1087,7 +1100,13 @@ int main(int argc, char *const argv[])
     //	Parse arguments.
     //
     for (;;) {
-	switch (getopt(argc, argv, "h?-c:jn:r:st:wz:")) {
+	switch (getopt(argc, argv, "h?-0:1:c:jn:r:st:wz:")) {
+	    case '0':			// thermal zone 0: name
+		ThermlZoneNames[0] = optarg;
+		continue;
+	    case '1':			// thermal zone 1: name
+		ThermlZoneNames[1] = optarg;
+		continue;
 	    case 'c':			// cpu start
 		StartCpu = atoi(optarg);
 		continue;

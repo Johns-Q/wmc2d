@@ -19,7 +19,7 @@
 .\"
 .\"	$Id$
 .\" ------------------------------------------------------------------------
-.TH "wmc2d" 1 "2010-09-14" "1" "wmc2d Manual"
+.TH "wmc2d" 1 "2010-09-17" "1" "wmc2d Manual"
 
 .SH NAME
 wmc2d \- a coretemp/cpufreq monitor dockapp
@@ -27,22 +27,26 @@ wmc2d \- a coretemp/cpufreq monitor dockapp
 .SH SYNOPSIS
 .B wmc2d
 .BI [\-?|\-h]
+.BI [\-jsw]
+.BI [\-0 \ zone-name ]
+.BI [\-1 \ zone-name ]
 .BI [\-c \ first ]
-.BI [\-j]
 .BI [\-n \ cpus ]
 .BI [\-r \ rate ]
-.BI [\-s]
 .BI [\-t \ freq ]
-.BI [\-w]
 .BI [\-z \ zones ]
 
 .SH DESCRIPTION
-This is a small dockapp, which shows the core temperature and cpu frequency
-from 2 upto 4 cores/cpus and the temperature of upto two ACPI thermal zones,
-which are normaly the motherboard temperature.
+This is a small dockapp, which shows the core temperature and CPU frequency
+from 2 upto 4 cores/CPUs and the temperature of upto two thermal zones, which
+are normaly the motherboard temperature.
 .PP
 All cpus, which are supported by the linux kernel "coretemp" and "cpufreq"
 modules, could be monitored.  f.e. core 2, atom and core iX.
+.PP
+All thermal zones which could be read from files are supported.  f.e.  ACPI
+through /sys/class/thermal/thermal_zoneX/temp or hardware sensors through
+/sys/devices/platform/<chip>/tempX_input.
 
 .SH OPTIONS
 .TP
@@ -50,7 +54,15 @@ modules, could be monitored.  f.e. core 2, atom and core iX.
 Show short usage help and exit.  The help is printed to stdout.  A note to all
 developers: please print to stdout!
 .TP
-.B \-c first
+.BI \-0 \ zone-name
+File name of the thermal zone 0, defaults to ACPI thermal zone 0
+(/sys/class/thermal/thermal_zone0/temp).
+.TP
+.BI \-1 \ zone-name
+File name of the thermal zone 1, defaults to ACPI thermal zone 1
+(/sys/class/thermal/thermal_zone1/temp).
+.TP
+.BI \-c \ first
 Number of the first CPU to use in this dockapp, can be used to monitor more
 than 4 core or cpus, with multiple dockapps.
 .TP
@@ -58,11 +70,11 @@ than 4 core or cpus, with multiple dockapps.
 Join two CPUs, only the information of every second core is displayed.
 (Useful for hyper-threading CPUs)
 .TP
-.B \-n cpus
+.BI \-n \ cpus
 Number of CPUs to display.  Currently only 2 or 4 CPUs are supported,  if you
 need others, please make a feature request or send a patch.
 .TP
-.B \-r rate
+.BI \-r \ rate
 Refresh rate of the temperature and frequency informations in milliseconds,
 defaults to 1500ms.  Shorter means more CPU usage and more updates.
 .TP
@@ -71,7 +83,7 @@ Sleep while screen-saver is running or video is blanked.  The dockapp sleeps
 and did't use any CPU cyles, while the display is switched off.  Saves energy
 on laptops.
 .TP
-.B \-t freq
+.BI \-t \ freq
 Turbo boost frequency in Mhz (f.e. 1734000 for 1.73 Ghz), when the turbo
 boost frequency is reached, the frequency is shown in red.
 .TP
@@ -79,8 +91,8 @@ boost frequency is reached, the frequency is shown in red.
 Start in window mode, used for debugging.  The dockapp gets the normal window
 borders and title.
 .TP
-.B \-z zones
-Number of ACPI thermal zones to display.  Currently only 0, 1 or 2 are
+.BI \-z \ zones
+Number of thermal zones to display.  Currently only 0, 1 or 2 are
 supported.  Thermal zone 0 is normaly the motherboard temperature.
 
 .SH FILES
@@ -93,6 +105,9 @@ kernel cpu frequency information
 .TP
 .I /sys/class/thermal/thermal_zoneX/temp
 kernel ACPI thermal zones
+.TP
+.I /sys/devices/platform/<sensor>/tempX_input
+kernel thermal hardware sensor
 
 .SH AUTHOR
 Copyright (C) 2004, 2009, 2010 Lutz Sammer.  License: AGPLv3.

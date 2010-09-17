@@ -1,5 +1,6 @@
 wmc2d
 *.o
 *~
+.*.swp
 www/wmc2d-*.tar.bz2
 www/html

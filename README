@@ -19,11 +19,15 @@ GNU Affero General Public License for more details.
 $Id$
 
 This is a small dockapp, which shows the core temperature and cpu frequency
-from 2 upto 4 cores/cpus and the temperature of upto two ACPI thermal zones,
+from 2 upto 4 cores/cpus and the temperature of upto two thermal zones,
 which are normaly the motherboard temperature.
 
 All cpus, which are supported by the linux kernel "coretemp" and "cpufreq"
 modules, could be monitored.  f.e. core 2, atom and core iX.
+
+All thermal zones which could be read from files are supported.  f.e.  ACPI
+through /sys/class/thermal/thermal_zoneX/temp or hardware sensors through
+/sys/devices/platform/<chip>/tempX_input.
 
 To compile you must have libxcb (xcb-dev) installed.
 

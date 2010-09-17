@@ -1,4 +1,7 @@
 User johns
+Date Fri Sep 17 23:32:10 CEST 2010
+
+    Fixed bug: Second Temperature zone with two CPUs, shows debug 9999.
 
 Date Fri Sep 17 14:28:03 CEST 2010
 

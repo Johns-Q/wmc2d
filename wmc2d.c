@@ -838,7 +838,6 @@ static void DrawTemperaturs(void)
 		DrawLcdNumber(n / 100, 3 + 2, 3 + 30 + 2);
 
 		n = ReadNumber(ThermlZoneNames[1]);
-		n = 9999;
 		if (n >= 0) {
 		    DrawLcdNumber(n / 100, 3 + 29 + 2, 3 + 30 + 2);
 		}

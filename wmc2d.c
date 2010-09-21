@@ -1,5 +1,5 @@
 ///
-///	@file wmc2d.c		@brief	Dockapp for core 2 duo temperature
+///	@file wmc2d.c		@brief	coretemp/corefreq monitor dockapp
 ///
 ///	Copyright (c) 2004, 2009, 2010 by Lutz Sammer.	All Rights Reserved.
 ///
@@ -35,7 +35,7 @@
 **	@n
 **	All thermal zones which could be read from files are supported.  f.e.
 **	ACPI through /sys/class/thermal/thermal_zoneX/temp or hardware sensors
-**	through /sys/devices/platform/<chip>/temp1_input.
+**	through /sys/devices/platform/@<chip@>/temp1_input.
 **	@n
 **	To compile you must have libxcb (xcb-dev) installed.
 **	@n
@@ -103,7 +103,8 @@ static char JoinCpus;			///< aggregate numbers of two cpus
 static char ThermalZones;		///< number of thermal zones
 static int TurboBoostFreq;		///< turbo boost frequency
 
-static const char *ThermlZoneNames[] = {	///< thermal zone names
+    /// thermal zone names
+static const char *ThermlZoneNames[] = {
     "/sys/class/thermal/thermal_zone0/temp",
     "/sys/class/thermal/thermal_zone1/temp",
 };
@@ -917,6 +918,13 @@ void Timeout(void)
     xcb_flush(Connection);
 }
 
+    /// shape rectangle shortcut macro
+#define _R(i, xx, yy, w, h) \
+    rectangles[i].x = xx; \
+    rectangles[i].y = yy; \
+    rectangles[i].width = w; \
+    rectangles[i].height = h;
+
 /**
 **	Prepare our graphic data.
 */
@@ -924,13 +932,6 @@ void PrepareData(void)
 {
     xcb_rectangle_t rectangles[10];
     int len;
-
-    /// shape rectangle shortcut macro
-#define _R(i, xx, yy, w, h) \
-    rectangles[i].x = xx; \
-    rectangles[i].y = yy; \
-    rectangles[i].width = w; \
-    rectangles[i].height = h;
 
     Image = CreatePixmap((void *)wmc2d_xpm, NULL);
     // clear background

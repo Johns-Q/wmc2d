@@ -1,4 +1,8 @@
 User johns
+Date Tue Sep 21 14:56:59 CEST 2010
+
+    Update to doxygen 1.7.1. Documentation corrections.
+
 Date Fri Sep 17 23:32:10 CEST 2010
 
     Fixed bug: Second Temperature zone with two CPUs, shows debug 9999.

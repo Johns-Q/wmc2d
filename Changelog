@@ -1,4 +1,8 @@
 User johns
+Date Tue Sep 21 22:53:41 CEST 2010
+
+    Fixed bug: coretemp duplicate CPU entries fixed in newer kernel.
+
 Date Tue Sep 21 14:56:59 CEST 2010
 
     Update to doxygen 1.7.1. Documentation corrections.

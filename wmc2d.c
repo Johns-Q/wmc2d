@@ -99,7 +99,8 @@ static char WindowMode;			///< start in window mode
 static char UseSleep;			///< use sleep while screensaver runs
 static char StartCpu;			///< first cpu nr. to use
 static char Cpus;			///< number of cpus
-static char JoinCpus;			///< aggregate numbers of two cpus
+static char JoinCpusTemp;		///< aggregate numbers of two cpus
+static char JoinCpusFreq;		///< aggregate numbers of two cpus
 static char ThermalZones;		///< number of thermal zones
 static int TurboBoostFreq;		///< turbo boost frequency
 
@@ -369,8 +370,8 @@ void Loop(void)
 	    if (fds[0].revents & (POLLIN | POLLPRI)) {
 		if ((event = xcb_poll_for_event(Connection))) {
 
-		    switch (event->
-			response_type & XCB_EVENT_RESPONSE_TYPE_MASK) {
+		    switch (event->response_type &
+			XCB_EVENT_RESPONSE_TYPE_MASK) {
 			case XCB_EXPOSE:
 			    // background pixmap no need to redraw
 #if 0
@@ -802,7 +803,7 @@ static void DrawTemperaturs(void)
 	case 4:
 	    for (i = 0; i < 4; ++i) {
 		temp[strlen("/sys/devices/platform/coretemp.")] =
-		    '0' + StartCpu + (i << JoinCpus);
+		    '0' + StartCpu + (i << JoinCpusTemp);
 		n = ReadNumber(temp);
 		DrawLcdNumber(n / 100, 2 + 2, 2 + i * 12 + 2);
 	    }
@@ -869,7 +870,8 @@ static void DrawFrequency(void)
 	case 4:
 	    for (i = 0; i < 4; ++i) {
 		freq[strlen("/sys/devices/system/cpu/cpu")] =
-		    '0' + StartCpu + (i << JoinCpus) + (JoinCpus ? flag : 0);
+		    '0' + StartCpu + (i << JoinCpusFreq) +
+		    (JoinCpusFreq ? flag : 0);
 		n = ReadNumber(freq);
 		if (n == TurboBoostFreq) {
 		    DrawRedSmallNumber(n / 1000, 2 + 33 + 2, 2 + i * 12 + 2);
@@ -1069,9 +1071,10 @@ static void PrintVersion(void)
 static void PrintUsage(void)
 {
     printf
-	("Usage: wmc2d [-?|-h][-jsw][-0 z0] [-1 -z1] [-c n] [-n n] [-r rate] [-t f] [-z n]\n"
+	("Usage: wmc2d [-?|-h][-jJsw][-0 z0] [-1 -z1] [-c n] [-n n] [-r rate] [-t f] [-z n]\n"
 	"\t-?|-h\tshow this help page\n"
-	"\t-j\tjoin two CPUs (for hyper-threading CPUs)\n"
+	"\t-j\tjoin two CPUs frequency (for hyper-threading CPUs)\n"
+	"\t-J\tjoin two CPUs temperature (for hyper-threading CPUs)\n"
 	"\t-s\tsleep while screen-saver is running or video is blanked\n"
 	"\t-w\tstart in window mode\n"
 	"\t-0 z0\tfile name of thermal zone 0 (defaults to ACPI Zone0)\n"
@@ -1100,7 +1103,7 @@ int main(int argc, char *const argv[])
     //	Parse arguments.
     //
     for (;;) {
-	switch (getopt(argc, argv, "h?-0:1:c:jn:r:st:wz:")) {
+	switch (getopt(argc, argv, "h?-0:1:c:jJn:r:st:wz:")) {
 	    case '0':			// thermal zone 0: name
 		ThermlZoneNames[0] = optarg;
 		continue;
@@ -1111,7 +1114,10 @@ int main(int argc, char *const argv[])
 		StartCpu = atoi(optarg);
 		continue;
 	    case 'j':			// join cpu's
-		JoinCpus = 1;
+		JoinCpusFreq = 1;
+		continue;
+	    case 'J':			// join cpu's
+		JoinCpusTemp = 1;
 		continue;
 	    case 'n':			// number of cpus/cores
 		Cpus = atoi(optarg);

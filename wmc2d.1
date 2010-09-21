@@ -27,7 +27,7 @@ wmc2d \- a coretemp/cpufreq monitor dockapp
 .SH SYNOPSIS
 .B wmc2d
 .BI [\-?|\-h]
-.BI [\-jsw]
+.BI [\-jJsw]
 .BI [\-0 \ zone-name ]
 .BI [\-1 \ zone-name ]
 .BI [\-c \ first ]
@@ -67,8 +67,13 @@ Number of the first CPU to use in this dockapp, can be used to monitor more
 than 4 core or cpus, with multiple dockapps.
 .TP
 .B \-j
-Join two CPUs, only the information of every second core is displayed.
+Join two CPUs, the frequency information of two cores is alternative displayed.
 (Useful for hyper-threading CPUs)
+.TP
+.B \-J
+Join two CPUs, only the temperature information of every second core is
+displayed. (Useful for hyper-threading CPUs) (Since kernel 2.6.35 there is
+only a sensor for physical cores)
 .TP
 .BI \-n \ cpus
 Number of CPUs to display.  Currently only 2 or 4 CPUs are supported,  if you

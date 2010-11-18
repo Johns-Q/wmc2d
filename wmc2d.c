@@ -370,8 +370,8 @@ void Loop(void)
 	    if (fds[0].revents & (POLLIN | POLLPRI)) {
 		if ((event = xcb_poll_for_event(Connection))) {
 
-		    switch (event->response_type &
-			XCB_EVENT_RESPONSE_TYPE_MASK) {
+		    switch (event->
+			response_type & XCB_EVENT_RESPONSE_TYPE_MASK) {
 			case XCB_EXPOSE:
 			    // background pixmap no need to redraw
 #if 0
@@ -403,7 +403,7 @@ void Loop(void)
 				if (sse->code == XCB_SCREENSAVER_STATE_ON) {
 				    // screensave on, stop updates
 				    delay = -1;
-				} else {
+				} else if (delay == -1) {
 				    // screensave off, resume updates
 				    delay = Rate;
 				    Timeout();	// show latest info

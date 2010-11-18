@@ -1,4 +1,8 @@
 User johns
+Date Thu Nov 18 18:36:41 CET 2010
+
+    Fixed: Ignore screen-saver-off, if already handled.
+
 Date Tue Sep 21 22:53:41 CEST 2010
 
     Fixed bug: coretemp duplicate CPU entries fixed in newer kernel.

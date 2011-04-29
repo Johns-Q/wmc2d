@@ -1,7 +1,7 @@
 #
 #	@file Makefile	@brief Core 2 Duo temperature dockapp make file.
 #
-#	Copyright (c) 2004, 2009, 2010 by Lutz Sammer.  All Rights Reserved.
+#	Copyright (c) 2004, 2009 - 2011 by Lutz Sammer.  All Rights Reserved.
 #
 #	Contributor(s):
 #
@@ -20,7 +20,7 @@
 #	$Id$
 #----------------------------------------------------------------------------
 
-VERSION =	"2.04"
+VERSION =	"2.05"
 GIT_REV =	$(shell git describe --always 2>/dev/null)
 
 CC=	gcc
@@ -28,8 +28,8 @@ OPTIM=	-march=native -O2 -fomit-frame-pointer
 CFLAGS= $(OPTIM) -W -Wall -Wextra -g -pipe \
 	-DVERSION='$(VERSION)'  $(if $(GIT_REV), -DGIT_REV='"$(GIT_REV)"')
 #STATIC= --static
-LIBS=	$(STATIC) `pkg-config --libs $(STATIC) \
-	xcb-screensaver xcb-icccm xcb-shape xcb-shm xcb-image xcb` -lpthread
+LIBS=	$(STATIC) `pkg-config --libs $(STATIC) xcb-util xcb-atom xcb-event \
+	xcb-icccm xcb-screensaver xcb-shape xcb-shm xcb-image xcb` -lpthread
 
 OBJS=	wmc2d.o
 FILES=	Makefile README Changelog AGPL-3.0.txt wmc2d.doxyfile wmc2d.xpm wmc2d.1

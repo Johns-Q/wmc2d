@@ -1,7 +1,7 @@
 ///
 ///	@file wmc2d.c		@brief	coretemp/corefreq monitor dockapp
 ///
-///	Copyright (c) 2004, 2009, 2010 by Lutz Sammer.	All Rights Reserved.
+///	Copyright (c) 2004, 2009 - 2011 by Lutz Sammer. All Rights Reserved.
 ///
 ///	Contributor(s):
 ///		Bitmap and design based on wmbp6.
@@ -70,6 +70,7 @@
 #include <xcb/xcb.h>
 #include <xcb/shm.h>
 #include <xcb/shape.h>
+#include <xcb/xcb_event.h>
 #include <xcb/xcb_image.h>
 #include <xcb/xcb_atom.h>
 #include <xcb/xcb_icccm.h>
@@ -447,7 +448,7 @@ int Init(int argc, char *const argv[])
     xcb_pixmap_t pixmap;
     xcb_window_t window;
     xcb_size_hints_t size_hints;
-    xcb_wm_hints_t wm_hints;
+    xcb_icccm_wm_hints_t wm_hints;
     int i;
     int n;
     char *s;
@@ -503,29 +504,29 @@ int Init(int argc, char *const argv[])
 
     // XSetWMNormalHints
     size_hints.flags = 0;		// FIXME: bad lib design
-    // xcb_size_hints_set_position(&size_hints, 0, 0, 0);
-    // xcb_size_hints_set_size(&size_hints, 0, 64, 64);
-    xcb_size_hints_set_min_size(&size_hints, 64, 64);
-    xcb_size_hints_set_max_size(&size_hints, 64, 64);
-    xcb_set_wm_normal_hints(connection, window, &size_hints);
+    // xcb_icccm_size_hints_set_position(&size_hints, 0, 0, 0);
+    // xcb_icccm_size_hints_set_size(&size_hints, 0, 64, 64);
+    xcb_icccm_size_hints_set_min_size(&size_hints, 64, 64);
+    xcb_icccm_size_hints_set_max_size(&size_hints, 64, 64);
+    xcb_icccm_set_wm_normal_hints(connection, window, &size_hints);
 
-    // XSetClassHint from xc/lib/X11/SetHints.c
-    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, WM_CLASS,
-	STRING, 8, strlen("wmc2d,wmc2d"), "wmc2d\0wmc2d");
-
-    xcb_set_wm_name(connection, window, STRING, strlen("wmc2d"), "wmc2d");
-    xcb_set_wm_icon_name(connection, window, STRING, strlen("wmc2d"), "wmc2d");
+    xcb_icccm_set_wm_class(connection, window, sizeof("wmc2d,wmc2d") - 1,
+	"wmc2d\0wmc2d");
+    xcb_icccm_set_wm_name(connection, window, XCB_ATOM_STRING, 8,
+	sizeof("wmc2d") - 1, "wmc2d");
+    xcb_icccm_set_wm_icon_name(connection, window, XCB_ATOM_STRING, 8,
+	sizeof("wmc2d") - 1, "wmc2d");
 
     // XSetWMHints
     wm_hints.flags = 0;
-    xcb_wm_hints_set_icon_pixmap(&wm_hints, pixmap);
-    xcb_wm_hints_set_window_group(&wm_hints, window);
-    xcb_wm_hints_set_withdrawn(&wm_hints);
+    xcb_icccm_wm_hints_set_icon_pixmap(&wm_hints, pixmap);
+    xcb_icccm_wm_hints_set_window_group(&wm_hints, window);
+    xcb_icccm_wm_hints_set_withdrawn(&wm_hints);
     if (WindowMode) {
-	// xcb_wm_hints_set_none(&wm_hints);
-	xcb_wm_hints_set_normal(&wm_hints);
+	// xcb_icccm_wm_hints_set_none(&wm_hints);
+	xcb_icccm_wm_hints_set_normal(&wm_hints);
     }
-    xcb_set_wm_hints(connection, window, &wm_hints);
+    xcb_icccm_set_wm_hints(connection, window, &wm_hints);
 
     // XSetCommand (see xlib source)
     for (n = i = 0; i < argc; ++i) {	// length of string prop
@@ -536,8 +537,8 @@ int Init(int argc, char *const argv[])
 	strcpy(s + n, argv[i]);
 	n += strlen(s + n) + 1;
     }
-    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window, WM_COMMAND,
-	STRING, 8, n, s);
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, window,
+	XCB_ATOM_WM_COMMAND, XCB_ATOM_STRING, 8, n, s);
 
 #ifdef SCREENSAVER
     //
@@ -1061,7 +1062,7 @@ static void PrintVersion(void)
 #ifdef GIT_REV
 	"(GIT-" GIT_REV ")"
 #endif
-	",\n\t(c) 2004, 2009, 2010 by Lutz Sammer\n"
+	",\n\t(c) 2004, 2009 - 2011 by Lutz Sammer\n"
 	"\tLicense AGPLv3: GNU Affero General Public License version 3\n");
 }
 

@@ -1,4 +1,8 @@
 User johns
+Date Fri Apr 29 16:56:13 CEST 2011
+
+    Made compatible with xcb version >= 1.7 and xcb-utils version >= 0.3.8
+
 Date Thu Nov 18 18:36:41 CET 2010
 
     Fixed: Ignore screen-saver-off, if already handled.

@@ -61,8 +61,8 @@ clobber:	clean
 	-rm -rf wmc2d www/html
 
 dist:
-	tar cjCf .. wmc2d-`date +%F-%H`.tar.bz2 \
-		$(addprefix wmc2d/, $(FILES) $(OBJS:.o=.c))
+	tar cjf wmc2d-`date +%F-%H`.tar.bz2 --transform 's,^,wmc2d/,' \
+		$(FILES) $(OBJS:.o=.c)
 
 install: wmc2d wmc2d.1
 	strip --strip-unneeded -R .comment wmc2d

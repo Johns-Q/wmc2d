@@ -1,7 +1,8 @@
 #
 #	@file Makefile	@brief Core 2 Duo temperature dockapp make file.
 #
-#	Copyright (c) 2004, 2009 - 2011 by Lutz Sammer.  All Rights Reserved.
+#	Copyright (c) 2004, 2009 - 2011, 2015 by Lutz Sammer.
+#		All Rights Reserved.
 #
 #	Contributor(s):
 #
@@ -20,7 +21,7 @@
 #	$Id$
 #----------------------------------------------------------------------------
 
-VERSION =	"2.05"
+VERSION =	"2.06"
 GIT_REV =	$(shell git describe --always 2>/dev/null)
 
 CC=	gcc

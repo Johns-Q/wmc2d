@@ -1,7 +1,8 @@
 ///
 ///	@file wmc2d.c		@brief	coretemp/corefreq monitor dockapp
 ///
-///	Copyright (c) 2004, 2009 - 2011 by Lutz Sammer. All Rights Reserved.
+///	Copyright (c) 2004, 2009 - 2011, 2015, 2021 by Lutz Sammer.
+///		All Rights Reserved.
 ///
 ///	Contributor(s):
 ///		Bitmap and design based on wmbp6.
@@ -106,10 +107,15 @@ static char ThermalZones;		///< number of thermal zones
 static int TurboBoostFreq;		///< turbo boost frequency
 
     /// thermal zone names
-static const char *ThermlZoneNames[] = {
+static const char *ThermalZoneNames[] = {
     "/sys/class/thermal/thermal_zone0/temp",
     "/sys/class/thermal/thermal_zone1/temp",
 };
+
+    /// coretemp thermal sensor names
+    /// FIXME: make this configurable
+static const char * CoreThermalNames =
+    "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp2_input";
 
 extern void Timeout(void);		///< called from event loop
 
@@ -401,7 +407,7 @@ void Loop(void)
 				xcb_screensaver_notify_event_t *sse;
 
 				sse = (xcb_screensaver_notify_event_t *) event;
-				if (sse->code == XCB_SCREENSAVER_STATE_ON) {
+				if (sse->state == XCB_SCREENSAVER_STATE_ON) {
 				    // screensave on, stop updates
 				    delay = -1;
 				} else if (delay == -1) {
@@ -798,26 +804,39 @@ static void DrawTemperaturs(void)
 {
     int n;
     int i;
-    static char temp[] = "/sys/devices/platform/coretemp.0/temp1_input";
+    // older linux
+    //static char temp[] = "/sys/devices/platform/coretemp.0/temp1_input";
+    // linux 3.00
+    //static char temp3[] = "/sys/devices/platform/coretemp.0/temp2_input";
+    // linux 4.00
+    //static char temp4[] = "/sys/devices/platform/coretemp.0/hwmon/hwmon0/temp2_input";
+    // linux 5.00
+    static char temp5[] = "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp2_input";
 
     switch (Cpus) {
 	case 4:
 	    for (i = 0; i < 4; ++i) {
-		temp[strlen("/sys/devices/platform/coretemp.")] =
-		    '0' + StartCpu + (i << JoinCpusTemp);
-		n = ReadNumber(temp);
+//		temp[strlen("/sys/devices/platform/coretemp.")] =
+//		    '0' + StartCpu + (i << JoinCpusTemp);
+//		temp3[strlen("/sys/devices/platform/coretemp.0/temp")] =
+//		    '2' + StartCpu + (i << JoinCpusTemp);
+//		temp4[strlen("/sys/devices/platform/coretemp.0/hwmon/hwmon0/temp")] =
+//		    '2' + StartCpu + (i << JoinCpusTemp);
+		temp5[strlen("/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp")] =
+		    '2' + StartCpu + (i << JoinCpusTemp);
+		n = ReadNumber(temp5);
 		DrawLcdNumber(n / 100, 2 + 2, 2 + i * 12 + 2);
 	    }
 
 	    if (ThermalZones >= 1) {
-		n = ReadNumber(ThermlZoneNames[0]);
+		n = ReadNumber(ThermalZoneNames[0]);
 		if (n >= 0) {
 		    DrawLcdNumber(n / 100, 2 + 2, 2 + 49 + 2);
 		}
 	    }
 
 	    if (ThermalZones >= 2) {
-		n = ReadNumber(ThermlZoneNames[1]);
+		n = ReadNumber(ThermalZoneNames[1]);
 		if (n >= 0) {
 		    DrawLcdNumber(n / 100, 2 + 31 + 2, 2 + 49 + 2);
 		}
@@ -827,25 +846,38 @@ static void DrawTemperaturs(void)
 
 	case 2:
 	default:
-	    temp[strlen("/sys/devices/platform/coretemp.")] =
-		'0' + StartCpu + 0;
-	    n = ReadNumber(temp);
+//	    temp[strlen("/sys/devices/platform/coretemp.")] =
+//		'0' + StartCpu + 0
+//	    temp3[strlen("/sys/devices/platform/coretemp.0/temp")] =
+//		'2' + StartCpu + 0;
+//	    temp4[strlen("/sys/devices/platform/coretemp.0/hwmon/hwmon0/temp")] =
+//		'2' + StartCpu + 0;
+	    temp5[strlen("/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp")] =
+		'2' + StartCpu + 0;
+	    n = ReadNumber(temp5);
 	    DrawLcdNumber(n / 100, 3 + 29 + 2, 3 + 2);
-	    temp[strlen("/sys/devices/platform/coretemp.")] =
-		'0' + StartCpu + 1;
+//	    temp[strlen("/sys/devices/platform/coretemp.")] =
+//		'0' + StartCpu + 1
+//	    temp3[strlen("/sys/devices/platform/coretemp.0/temp")] =
+//		'2' + StartCpu + 1;
+//	    temp4[strlen("/sys/devices/platform/coretemp.0/hwmon/hwmon0/temp")] =
+//		'2' + StartCpu + 1;
+	    temp5[strlen("/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp")] =
+		'2' + StartCpu + 1;
+	    n = ReadNumber(temp5);
 	    DrawLcdNumber(n / 100, 3 + 29 + 2, 3 + 15 + 2);
 
 	    // temperature zones
 	    if (ThermalZones >= 2) {
-		n = ReadNumber(ThermlZoneNames[0]);
+		n = ReadNumber(ThermalZoneNames[0]);
 		DrawLcdNumber(n / 100, 3 + 2, 3 + 30 + 2);
 
-		n = ReadNumber(ThermlZoneNames[1]);
+		n = ReadNumber(ThermalZoneNames[1]);
 		if (n >= 0) {
 		    DrawLcdNumber(n / 100, 3 + 29 + 2, 3 + 30 + 2);
 		}
 	    } else if (ThermalZones >= 1) {
-		n = ReadNumber(ThermlZoneNames[0]);
+		n = ReadNumber(ThermalZoneNames[0]);
 		if (n >= 0) {
 		    DrawLcdNumber(n / 100, 3 + 29 + 2, 3 + 30 + 2);
 		}
@@ -1083,7 +1115,7 @@ static void PrintUsage(void)
 	"\t-c n\tfirst CPU to use (to monitor more than 4 cores)\n"
 	"\t-n n\tnumber of CPU to display (2 or 4)\n"
 	"\t-r rate\trefresh rate (in milliseconds, default 1500 ms)\n"
-	"\t-t f\tturbo boost frequency in Mhz (f.e. 1734000 for 1.73 Ghz)\n"
+	"\t-t f\tturbo boost frequency in Hz (f.e. 1734000 for 1.73 GHz)\n"
 	"\t-z n\tnumber of thermal zones (0, 1 or 2)\n"
 	"Only idiots print usage on stderr!\n");
 }
@@ -1106,10 +1138,10 @@ int main(int argc, char *const argv[])
     for (;;) {
 	switch (getopt(argc, argv, "h?-0:1:c:jJn:r:st:wz:")) {
 	    case '0':			// thermal zone 0: name
-		ThermlZoneNames[0] = optarg;
+		ThermalZoneNames[0] = optarg;
 		continue;
 	    case '1':			// thermal zone 1: name
-		ThermlZoneNames[1] = optarg;
+		ThermalZoneNames[1] = optarg;
 		continue;
 	    case 'c':			// cpu start
 		StartCpu = atoi(optarg);

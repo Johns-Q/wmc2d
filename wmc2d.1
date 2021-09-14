@@ -1,7 +1,7 @@
 .\"
 .\"	@file wmc2d.1		@brief coretemp/cpufreq monitor dockapp
 .\"
-.\"	Copyright (c) 2004, 2009, 2010 by Lutz Sammer.  All Rights Reserved.
+.\"	Copyright (c) 2004, 2009 - 2012 by Lutz Sammer.  All Rights Reserved.
 .\"
 .\"	Contributor(s):
 .\"
@@ -19,7 +19,7 @@
 .\"
 .\"	$Id$
 .\" ------------------------------------------------------------------------
-.TH "wmc2d" 1 "2010-09-17" "1" "wmc2d Manual"
+.TH "wmc2d" 1 "2012-06-11" "1" "wmc2d Manual"
 
 .SH NAME
 wmc2d \- a coretemp/cpufreq monitor dockapp
@@ -27,7 +27,7 @@ wmc2d \- a coretemp/cpufreq monitor dockapp
 .SH SYNOPSIS
 .B wmc2d
 .BI [\-?|\-h]
-.BI [\-jJsw]
+.BI [\-3jJsw]
 .BI [\-0 \ zone-name ]
 .BI [\-1 \ zone-name ]
 .BI [\-c \ first ]
@@ -74,6 +74,10 @@ Join two CPUs, the frequency information of two cores is alternative displayed.
 Join two CPUs, only the temperature information of every second core is
 displayed. (Useful for hyper-threading CPUs) (Since kernel 2.6.35 there is
 only a sensor for physical cores)
+.TP
+.B \-3
+Handle linux 3.x coretemp.  (Since kernel 3.0 the path and filenames are
+changed)
 .TP
 .BI \-n \ cpus
 Number of CPUs to display.  Currently only 2 or 4 CPUs are supported,  if you

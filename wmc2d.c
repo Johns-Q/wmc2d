@@ -104,7 +104,7 @@ static char Cpus;			///< number of cpus
 static char JoinCpusTemp;		///< aggregate numbers of two cpus
 static char JoinCpusFreq;		///< aggregate numbers of two cpus
 static char ThermalZones;		///< number of thermal zones
-static int TurboBoostFreq;		///< turbo boost frequency
+static int TurboBoostFreq;		///< >= turbo boost frequency
 
     /// thermal zone names
 static const char *ThermalZoneNames[] = {
@@ -906,7 +906,7 @@ static void DrawFrequency(void)
 		    '0' + StartCpu + (i << JoinCpusFreq) +
 		    (JoinCpusFreq ? flag : 0);
 		n = ReadNumber(freq);
-		if (n == TurboBoostFreq) {
+		if (n >= TurboBoostFreq) {
 		    DrawRedSmallNumber(n / 1000, 2 + 33 + 2, 2 + i * 12 + 2);
 		} else {
 		    DrawSmallNumber(n / 1000, 2 + 33 + 2, 2 + i * 12 + 2);
@@ -919,14 +919,14 @@ static void DrawFrequency(void)
 	default:
 	    freq[strlen("/sys/devices/system/cpu/cpu")] = '0' + StartCpu + 0;
 	    n = ReadNumber(freq);
-	    if (n == TurboBoostFreq) {
+	    if (n >= TurboBoostFreq) {
 		DrawRedSmallNumber(n / 1000, 3 + 2, 46 + 3 + 2);
 	    } else {
 		DrawSmallNumber(n / 1000, 3 + 2, 46 + 3 + 2);
 	    }
 	    freq[strlen("/sys/devices/system/cpu/cpu")] = '0' + StartCpu + 1;
 	    n = ReadNumber(freq);
-	    if (n == TurboBoostFreq) {
+	    if (n >= TurboBoostFreq) {
 		DrawRedSmallNumber(n / 1000, 3 + 31 + 2, 46 + 3 + 2);
 	    } else {
 		DrawSmallNumber(n / 1000, 3 + 31 + 2, 46 + 3 + 2);
@@ -1115,7 +1115,7 @@ static void PrintUsage(void)
 	"\t-c n\tfirst CPU to use (to monitor more than 4 cores)\n"
 	"\t-n n\tnumber of CPU to display (2 or 4)\n"
 	"\t-r rate\trefresh rate (in milliseconds, default 1500 ms)\n"
-	"\t-t f\tturbo boost frequency in Hz (f.e. 1734000 for 1.73 GHz)\n"
+	"\t-t f\t>= turbo boost frequency in Hz (f.e. 1734000 for 1.73 GHz)\n"
 	"\t-z n\tnumber of thermal zones (0, 1 or 2)\n"
 	"Only idiots print usage on stderr!\n");
 }
@@ -1167,7 +1167,7 @@ int main(int argc, char *const argv[])
 	    case 's':			// sleep while screensaver running
 		UseSleep = 1;
 		continue;
-	    case 't':			// turbo boost frequency
+	    case 't':			// >= turbo boost frequency
 		TurboBoostFreq = atoi(optarg);
 		continue;
 	    case 'z':			// number of thermal zones

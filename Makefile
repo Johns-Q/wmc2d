@@ -1,7 +1,7 @@
 #
 #	@file Makefile	@brief Core 2 Duo temperature dockapp make file.
 #
-#	Copyright (c) 2004, 2009 - 2011, 2015 by Lutz Sammer.
+#	Copyright (c) 2004, 2009 - 2011, 2015, 2021 by Lutz Sammer.
 #		All Rights Reserved.
 #
 #	Contributor(s):
@@ -33,7 +33,8 @@ LIBS=	$(STATIC) `pkg-config --libs $(STATIC) xcb-util xcb-atom xcb-event \
 	xcb-icccm xcb-screensaver xcb-shape xcb-shm xcb-image xcb` -lpthread
 
 OBJS=	wmc2d.o
-FILES=	Makefile README Changelog AGPL-3.0.txt wmc2d.doxyfile wmc2d.xpm wmc2d.1
+FILES=	Makefile README Changelog AGPL-v3.0.md LICENSE.md wmc2d.doxyfile \
+	wmc2d.xpm wmc2d.1
 
 all:	wmc2d
 
